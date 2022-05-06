@@ -1,0 +1,588 @@
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "cstr.h"
+#include "vector.h"
+#include "types.h"
+#include "../opcode.h"
+#include "../bus.h"
+
+#include "linker.h"
+#include "asm.h"
+
+
+
+
+#define TYPE_0(opcode) u32 ret = opcode; return ret;
+
+#define TYPE_A(opcode) u32 ret = opcode; \
+ret = SET_REG(ret, 1, dest);\
+ret = SET_REG(ret, 2, a);\ 
+ret = SET_REG(ret, 3, b);\
+return ret;
+
+#define TYPE_B(opcode) u32 ret = opcode; \
+ret = SET_REG(ret, 1, dest);\
+ret = SET_REG(ret, 2, a);\ 
+ret = SET_ADD_IMM(ret, imm);\
+return ret;
+
+#define TYPE_C(opcode) u32 ret = opcode; \
+ret = SET_REG(ret, 1, dest);\
+ret = SET_REG(ret, 2, a);\ 
+ret = SET_INDEX_OFFSET(ret, imm);\
+return ret;
+  
+#define TYPE_D(opcode) u32 ret = opcode;\
+ret = SET_REG(ret, 1, dest);\
+ret = SET_IMM(ret, imm);\
+return ret;
+
+#define TYPE_E(opcode) u32 ret = opcode;\
+ret = SET_REG(ret, 1, dest); \
+return ret;
+
+#define TYPE_F(opcode) u32 ret = opcode;\
+ret = SET_IMM_IMP(ret, imm); \
+return ret;
+
+
+
+
+
+
+static u32 func_A(u8 opcode, u8 dest, u8 a, u8 b){
+  TYPE_A(opcode);
+}
+
+static u32 func_B(u8 opcode, u8 dest, u8 a, u32 imm){
+  TYPE_B(opcode);
+}
+
+static u32 func_C(u8 opcode, u8 dest, u32 imm, u8 a){
+  TYPE_C(opcode);
+}
+
+static u32 func_D(u8 opcode, u8 dest, u32 imm){
+  TYPE_D(opcode);
+}
+
+static u32 func_E(u8 opcode, u8 dest){
+  TYPE_E(opcode);
+}
+
+static u32 func_F(u8 opcode, u32 imm){
+  TYPE_F(opcode);
+}
+
+static u32 func_0(u8 opcode){
+  TYPE_0(opcode);
+}
+
+#define func_mul func_A
+#define func_muli func_B
+#define func_div func_A
+#define func_divi func_B
+#define func_sub func_A
+#define func_subi func_B
+#define func_add func_A
+#define func_addi func_B
+
+#define func_and func_A
+#define func_andi func_B
+#define func_or func_A
+#define func_ori func_B
+#define func_xor func_A
+#define func_xori func_B
+
+#define func_li func_D
+#define func_load_byte func_C
+#define func_load_halfword func_C
+#define func_load_word func_C
+#define func_sb func_C
+#define func_shw func_C
+#define func_sw func_C
+
+#define func_sl func_A
+#define func_sli func_B
+#define func_sr func_A
+#define func_sri func_B
+
+#define func_b func_F
+#define func_bl func_F
+#define func_beq func_F
+#define func_bne func_F
+#define func_blt func_F
+#define func_ble func_F
+#define func_bgt func_F
+#define func_bge func_F
+#define func_blr func_0
+
+#define func_cmp func_A
+#define func_cmpi func_D
+
+#define func_mr func_A
+#define func_syscall func_F
+#define func_mtlr func_E
+#define func_mflr func_E
+#define func_end func_F
+
+#define func_nop func_0
+
+
+typedef u32 (*asm_microcode_t)(u32, u32, u32, u32, u32);
+
+asm_microcode_t asm_opcode_ptr[0b111111] = {func_nop};
+
+
+#define DEF_OP(opcode, func) asm_opcode_ptr[opcode] = func;
+static inline void init_ops(){
+  for(u8 i = 0; i < 0b111111; i++){
+    asm_opcode_ptr[i] = NULL;
+  }
+  DEF_OP(NOP, func_nop);
+  
+  DEF_OP(ADD, func_add);
+	DEF_OP(ADDI, func_addi);
+	
+	DEF_OP(LI, func_li);
+	DEF_OP(LW, func_load_word);
+	DEF_OP(LB, func_load_byte);
+	DEF_OP(LHW, func_load_halfword);
+	
+	DEF_OP(SW, func_sw);
+	DEF_OP(SB, func_sb);
+	DEF_OP(SHW, func_shw);
+	
+	DEF_OP(MUL, func_mul);
+	DEF_OP(MULI, func_muli);
+	
+	DEF_OP(DIV, func_div);
+	DEF_OP(DIVI, func_divi);
+	
+	DEF_OP(SUB, func_sub);
+	DEF_OP(SUBI, func_subi);
+	
+	DEF_OP(CMP, func_cmp);
+	DEF_OP(CMPI, func_cmpi);
+	
+	DEF_OP(B, func_b);
+	DEF_OP(BL, func_bl);
+	DEF_OP(BLR, func_blr);
+	DEF_OP(BEQ, func_beq);
+	DEF_OP(BNE, func_bne);
+	DEF_OP(BLT, func_blt);
+	DEF_OP(BLE, func_ble);
+	DEF_OP(BGT, func_bgt);
+	DEF_OP(BGE, func_bge);
+	
+	DEF_OP(SR, func_sr);
+	DEF_OP(SRI, func_sri);
+	DEF_OP(SL, func_sl);
+	DEF_OP(SLI, func_sli);
+	
+	DEF_OP(AND, func_and);
+	DEF_OP(ANDI, func_andi);
+	DEF_OP(OR, func_or);
+	DEF_OP(ORI, func_ori);
+	DEF_OP(XOR, func_xor);
+	DEF_OP(XORI, func_xori);
+	
+	DEF_OP(MR, func_mr);
+	DEF_OP(MFLR, func_mflr);
+	DEF_OP(MTLR, func_mtlr);
+	DEF_OP(SC, func_syscall);
+	DEF_OP(END, func_end);
+	
+	
+  extern char* opcode_str[OPCODE_LEN];
+	 for(u8 i = 0; i < OPCODE_LEN; i++){
+    if(asm_opcode_ptr[i] == NULL && opcode_str[i] != NULL){
+      fprintf(stderr, "WARNING ASM: opcode %u \"%s\" not implimented\n", i, opcode_str[i]);
+    }
+  }
+}
+
+
+
+extern char* opcode_str[OPCODE_LEN];
+u8 name_to_instr(const char* __restrict__ memonic){
+  char* name = cstrdup_stack(memonic);
+  char* ogptr = name;
+  while(*name != 0){
+    if(*name == ' ') {
+      *name = 0; 
+      break;
+    }
+    if(*name > 0x5F){
+      *name -= ('a' - 'A');
+    }
+
+    name++;
+  }
+  name = ogptr;
+  
+  for(unsigned int i = 0; i < OPCODE_LEN; i++){
+    if(strcmp(name, opcode_str[i]) == 0){
+      return i;
+    }
+  }
+
+  return 0;
+}
+
+
+
+
+//Add opcode to bin and then move the cursor to the next location
+static inline char* push32(char* __restrict__ buff, u32 opdat){
+  *((u32*)buff) = opdat;
+  buff += sizeof(u32);
+  return buff;
+}
+
+#define PUSH32(val) tmp_bin = push32(tmp_bin, val);
+
+
+//finds '\' 'n' and converts it to the single character of '\n'
+static void decode_backslashes(cstr str){
+  cstr og_string = str;
+  while((str = strchr(str, '\\')) != NULL){
+    cstrshl(str, 1); //Remove \ character
+    
+    switch(*str){
+      case 'n':
+        *str = '\n';
+      break;
+      case 'b':
+        *str = '\b';
+      break;
+      case 't':
+        *str = '\t';
+      break;
+      case 'r':
+        *str = '\r';
+      break;
+      case '0':
+        cstrshl(str, 1); //Count as a spacebar
+      break;
+      
+      default:
+        fprintf(stderr, "ERR ASM: Current string contains a special character that I do not know how to interperut! str = \"%s\"\n", og_string);
+        abort();
+      break;
+    }
+  }
+}
+
+
+
+//Possible future use for a proper linker?
+typedef struct{
+  vector labels;
+  Asm_file_t asm_global;
+}Intermediate_Asm_File_t;
+
+static u64 pc; //Used to find where to place the data
+extern char logging;
+
+static Intermediate_Asm_File_t get_labels(fu_TextFile* txt){
+  pc = 4; //For some reason it needs to be 8 instead of 4?
+  u64 start_pc = 0;//Set the rom start address to 0. If this stays zero after all labels are decoded then 'start' was never defined
+  vector labels = vector_create(sizeof(Label), free_label);
+  vector globals = vector_create(sizeof(Label), free_label);
+  
+  Intermediate_Asm_File_t ret;
+  ret.asm_global.bin = fu_alloc_bin_file(sizeof(u32));
+  
+  for(u64 i = 0; i < txt->size; i++){
+    char* cursor = strchr(txt->text[i], ':');
+    if(!cursor) continue;
+    if(cstrcnt(txt->text[i], "\"") == 2){
+      //Remove quotes and copy binary data
+      fu_BinFile dat_seg;
+      dat_seg.bin = strdup(strchr(txt->text[i], '"') + 1);
+      *(strrchr(dat_seg.bin, '"')) = 0;
+      
+      //Decode backslash characters
+      decode_backslashes(dat_seg.bin);
+      //Copy into executable binary
+      dat_seg.size = strlen(dat_seg.bin) + 1;
+      fu_join_bin(&ret.asm_global.bin, dat_seg);
+
+      
+      //Add label
+      Label tmp = Label_construct(strdup(txt->text[i]), pc + ROM_START); //Add +ROM_START because DMA is not relitive to cpu.pc
+      *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
+      labels.push_back(&labels, &tmp);
+      pc += dat_seg.size;
+      fu_delete_text(txt, i); //Remove line that contained the label
+      i--;
+      
+      fu_free_bin_file(dat_seg);
+      continue;
+    }
+  
+    //.macro testMacro: 20
+    if(strlen(cursor) > 2 && strstr(txt->text[i], ".macro ") == txt->text[i]){  //Number is after the label
+
+      unsigned int tmpint = 0;
+      sscanf(cursor + 1, "%u", &tmpint);
+      
+      //Add label
+      Label tmp = Label_construct(strdup(strchr(txt->text[i], ' ') + 1), tmpint);
+      *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
+      labels.push_back(&labels, &tmp);
+      fu_delete_text(txt, i); //Remove line that contained the label
+      i--;
+      
+      continue;
+    }
+    
+    //testInt: 210
+    if(strlen(cursor) > 2){  //Number is after the label
+      
+      fu_BinFile dat_seg;
+      dat_seg.bin = (char*)malloc(sizeof(unsigned int));
+      sscanf(cursor + 1, "%u", (unsigned int*)dat_seg.bin);
+      
+      //Copy into executable binary
+      dat_seg.size = sizeof(unsigned int);
+      fu_join_bin(&ret.asm_global.bin, dat_seg);
+
+      
+      //Add label
+      Label tmp = Label_construct(strdup(txt->text[i]), pc + ROM_START); //Add +ROM_START because DMA is not relitive to cpu.pc
+      *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
+      labels.push_back(&labels, &tmp);
+      pc += dat_seg.size;
+      fu_delete_text(txt, i); //Remove line that contained the label
+      i--;
+      
+      fu_free_bin_file(dat_seg);
+      continue;
+    }
+  }
+  
+  fu_index data_size = pc;
+
+  
+  for(u64 i = 0; i < txt->size; i++){
+    pc = i * 4 + data_size;
+    if(strstr(txt->text[i], ":") != NULL){
+      Label tmp = Label_construct(strdup(txt->text[i]), pc);
+      tmp.str[strlen(tmp.str) - 1] =0;
+      if(logging){
+        printf("LABEL: \"%s\": %llX\n", tmp.str, tmp.ptr);
+      }
+      labels.push_back(&labels, &tmp);
+      //printf("LBL \"%s\" at %llu\n", tmp.str, pc);
+      if(strcmp(tmp.str, "start") == 0){
+        start_pc = pc;
+      }
+      fu_delete_text(txt, i);
+      i--;
+      continue;
+    }
+    if(strstr(txt->text[i], ".global") != NULL){
+      Label tmp = Label_construct(strdup(txt->text[i]), pc);
+      tmp.str[strlen(tmp.str) - 1] = 0;
+      globals.push_back(&globals, &tmp);
+      fu_delete_text(txt, i);
+      i--;
+      continue;
+    }
+    
+    //This line of the file was assembly code
+    
+  }
+  
+  if(start_pc == 0){
+    fprintf(stderr, "ASM ERR: 'start' label was not found!\n");
+    abort();
+  }else{
+    *((u32*)ret.asm_global.bin.bin)  = ((u32)(start_pc)); //Set start rom address
+  }
+
+  ret.labels = labels;
+  ret.asm_global.globals = globals;
+  return ret;
+}
+
+static void remove_register_indicators(cstr str){
+  if(!str) return;
+  cstr tmp = str;
+   
+  while((tmp = strstr(str, "sp"))){
+	//Convert sp to r0
+	tmp[0] = 'r';
+	tmp[1] = '0';
+  }
+
+  while((tmp = strchr(str, 'r')) != NULL){
+    if(!(tmp[1] >= '0' && tmp[1] <= '9')) break; //Invalid characters found! isBadString will resolve this later
+    cstrshl(tmp, 1);  //Remove the 'r'
+  }
+
+  while((tmp = strchr(str, 'f')) != NULL){
+    cstrshl(tmp, 1);  //Remove the 'f'
+  }
+  
+  while((tmp = strchr(str, '$')) != NULL){
+    cstrshl(tmp, 1);  //Remove the '$'
+  }
+  
+  while((tmp = strchr(str, '%')) != NULL){
+    cstrshl(tmp, 1);  //Remove the '%'
+  }
+}
+
+
+//Checks the string for any non number characters
+static bool isBadString(cstr __restrict__ str){
+	if(!(str = strchr(str, ' ')) ) return false; //Checks for the first spacebar. If there is no spacebar it returns false
+	while(*str != 0){
+		if(*str >= 'a' && *str <= 'z') return true;
+		if(*str >= 'a' && *str <= 'z') return true;
+		if(!(*str >= '0' && *str <= '9') && *str != ' ') return true;
+		str++;
+	}
+	return false;
+}
+
+
+static void clean_text(fu_TextFile* t){
+  for(fu_index i = 0; i < t->size; i++){
+    //Remove unwanted text
+    char* tmp = strrchr(t->text[i], '(');
+    if(tmp) *tmp = ' ';
+    cstrrem(t->text[i], ',');
+    cstrrem(t->text[i], ')');
+    tmp = t->text[i];
+    while((tmp = strstr(t->text[i], "  "))){ //remove all double spaces
+      cstrshl(tmp, 1);
+    }
+    while(t->text[i][0] == ' '){ //Remove spaces from begining
+      cstrshl(t->text[i], 1);
+    }
+    while(strrchr(t->text[i], '\t')){ //remove all tabs
+      cstrrem(t->text[i], '\t');
+    }
+    tmp = strchr(t->text[i], ';'); //Remove comments
+    if(tmp != NULL){
+      *tmp = 0;
+    }
+    
+    if(strlen(t->text[i]) == 0){ //Remove blank lines
+      fu_delete_text(t, i);
+      i--; // i - 1 + 1 = i
+      continue;
+    }
+    //puts(t->text[i]);
+  }
+}
+
+char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
+  #define labels asm_f.labels
+  //replace label with memory address
+  for (u64 i1 = 0; i1 < labels.size(&labels); i1++) {
+    Label* ele1 = (Label*)labels.index(&labels, i1);
+    char* cache = strstr(ele, ele1->str);
+    if (cache != NULL) {
+      char* tmp_string = cstrdup_stack(cache);
+      char* helper;
+      if ((helper = strchr(tmp_string, ' '))) {
+        *helper = 0;
+      }
+
+      if (strcmp(tmp_string, ele1->str) != 0) {
+        continue;
+      }
+      char num_buffer[50];
+      sprintf(num_buffer, "%llu", ele1->ptr);
+      ele = cstrrep(ele, ele1->str, num_buffer);
+      break;
+    }
+  }
+  #undef labels
+  return ele;
+}
+
+
+fu_BinFile assemble_s(fu_TextFile assembly){
+  if(logging){
+    puts("ASSEMBLING ...");
+  }
+  
+  fu_BinFile ret = fu_alloc_bin_file(ROM_SIZE);
+  char* tmp_bin = ret.bin;
+  init_ops();
+  
+  fu_TextFile t = fu_create_text_copy(assembly);
+  clean_text(&t); //Remove all junk characters
+  
+  Intermediate_Asm_File_t tmp_asm = get_labels(&t);
+  //Copy data segments into rom including start addr
+  memcpy(ret.bin, tmp_asm.asm_global.bin.bin, tmp_asm.asm_global.bin.size);
+  tmp_bin += tmp_asm.asm_global.bin.size;
+  u64 start_addr = tmp_asm.asm_global.bin.size;
+  
+  
+  for(fu_index i = 0; i < t.size; i++){
+    //Replace label if it exists
+    t.text[i] = check_and_replace_label(t.text[i], tmp_asm);
+    
+    //Remove register indicators (aka. r13 or $r32, or %r2)
+    remove_register_indicators(strchr(t.text[i], ' '));
+
+#ifndef DISABLE_ERR_CHECKING
+    if(isBadString(t.text[i])){
+	fprintf(stderr, "ERR: Assembler: Line %llu of the file contains invalid characters!\nAssembly dump is as follows which shows the offending code ...\n", i);
+	for(fu_index i1 = (i - 2) * ((i - 2) >= 0) ; i1 < (i + 5) && i1 < t.size; i1++){
+		fprintf(stderr, "%llu: \"%s\"\n", i1, t.text[i1]);
+	}
+	exit(EXIT_FAILURE);
+    }
+#endif
+
+    //Get opcode from memonic
+    u32 opcode = name_to_instr(t.text[i]);
+    
+    //remove memonic
+    cstr tmp = cstrdup_stack(t.text[i]);
+    if(strchr(tmp, ' '))
+      tmp = strchr(tmp,  ' ') + 1; //Advance pointer to after the memonic and the spacebar after it
+    else
+      tmp = "0";
+    
+    u32 dest, a, b, c;
+    dest = 0;
+    a = 0;
+    b = 0;
+    c = 0;
+    
+    //If the assembly does not need all of the arguments then sscanf will not set a,b,c so it is safe to use. All varibles are set to 0 which removes and possiblity that it will overrite any bits if set is used
+    sscanf(tmp, "%u %u %u %u", &dest, &a, &b, &c); 
+    if(logging){
+      printf("pc: %llX:  %s %s\n", i * 4 + start_addr, opcode_str[opcode], tmp);
+    }
+    //When calling the function pointer, the function being called has no clue how many arguments are being passed in.
+    //All argument registers are overwritten in this function and the called function has no way of telling if there is arguments set past it's
+    //intended reach so this approach has no expliots avaible and condenses the code a lot.
+    PUSH32(asm_opcode_ptr[opcode](opcode, dest, a, b, c));
+  }
+  
+  vector_deconstruct(&tmp_asm.labels);
+  vector_deconstruct(&tmp_asm.asm_global.globals);
+  fu_free_text_file(t);
+  return ret;
+}
+
+fu_BinFile assemble(const char* __restrict__ file_path){
+  fu_BinFile ret;
+  fu_TextFile input = fu_load_text_file(file_path);
+  ret = assemble_s(input);
+  fu_free_text_file(input);
+  return ret;
+}
