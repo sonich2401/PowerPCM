@@ -43,6 +43,10 @@ const char* opcode_str[OPCODE_LEN] = {
 	"BGE",
 	"BLT",
 	"BLE",
+	
+	"BDNZ",
+	"BDZ",
+	
 	"CMP",
 	"CMPI",
 	"BLR",
@@ -316,6 +320,22 @@ static void func_bge(u32 opdat){
 	}
 }
 
+static void func_bdz(u32 opdat){
+	TYPE_F
+	
+	if(!(--cpu.ctr)){
+		jump(imm);
+	}
+}
+
+static void func_bdnz(u32 opdat){
+	TYPE_F
+	
+	if((--cpu.ctr)){
+		jump(imm);
+	}
+}
+
 static void func_blr(u32 opdat){
 	TYPE_0
 	cpu.pc = cpu.lr;
@@ -410,9 +430,8 @@ static void func_mr(u32 opdat){
 static void func_syscall(u32 opdat){
 	TYPE_F
 	
-	extern bus_t bus; //Syscalls should be the only function to have access to this varible
 	int err = 0;
-	void* tmp_ptr;
+
 	switch(imm){
 		case PUT:
 			//printf("%u, %X, \"%c\"\n", (unsigned)cpu.ru[3], (unsigned)cpu.ru[3], (char)cpu.ru[3]);
@@ -420,7 +439,7 @@ static void func_syscall(u32 opdat){
 			return;
 		break;
 		case SCAN:
-			err = scanf((const char*)&bus.DMA[cpu.ru[3]], (const char*)&bus.DMA[cpu.ru[4]]);
+			err = syscall_scanf(3, 4);
 			if(err != 0){
 				cpu.cr.ERR = 1;
 			}
@@ -539,6 +558,9 @@ void init_opcodes(){
 	DEF_OP(BLE, func_ble);
 	DEF_OP(BGT, func_bgt);
 	DEF_OP(BGE, func_bge);
+	
+	DEF_OP(BDZ, func_bdz);
+	DEF_OP(BDNZ, func_bdnz);
 	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);

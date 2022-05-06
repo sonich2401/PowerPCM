@@ -18,20 +18,20 @@
 
 #define TYPE_A(opcode) u32 ret = opcode; \
 ret = SET_REG(ret, 1, dest);\
-ret = SET_REG(ret, 2, a);\ 
+ret = SET_REG(ret, 2, a);\
 ret = SET_REG(ret, 3, b);\
 return ret;
 
 #define TYPE_B(opcode) u32 ret = opcode; \
 ret = SET_REG(ret, 1, dest);\
-ret = SET_REG(ret, 2, a);\ 
+ret = SET_REG(ret, 2, a);\
 ret = SET_ADD_IMM(ret, imm);\
 return ret;
 
 #define TYPE_C(opcode) u32 ret = opcode; \
 ret = SET_REG(ret, 1, dest);\
-ret = SET_REG(ret, 2, a);\ 
-ret = SET_INDEX_OFFSET(ret, imm);\
+ret = SET_REG(ret, 2, a);\
+ret = SET_INDEX_OFFSET(ret, imm); \
 return ret;
   
 #define TYPE_D(opcode) u32 ret = opcode;\
@@ -119,6 +119,9 @@ static u32 func_0(u8 opcode){
 #define func_bge func_F
 #define func_blr func_0
 
+#define func_bdz func_F
+#define func_bdnz func_F
+
 #define func_cmp func_A
 #define func_cmpi func_D
 
@@ -177,6 +180,9 @@ static inline void init_ops(){
 	DEF_OP(BGT, func_bgt);
 	DEF_OP(BGE, func_bge);
 	
+	DEF_OP(BDZ, func_bdz);
+	DEF_OP(BDNZ, func_bdnz);
+	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);
 	DEF_OP(SL, func_sl);
@@ -207,9 +213,11 @@ static inline void init_ops(){
 
 
 extern char* opcode_str[OPCODE_LEN];
+
 u8 name_to_instr(const char* __restrict__ memonic){
   char* name = cstrdup_stack(memonic);
   char* ogptr = name;
+  //Normalize name
   while(*name != 0){
     if(*name == ' ') {
       *name = 0; 
@@ -223,6 +231,7 @@ u8 name_to_instr(const char* __restrict__ memonic){
   }
   name = ogptr;
   
+  //Search for opcode
   for(unsigned int i = 0; i < OPCODE_LEN; i++){
     if(strcmp(name, opcode_str[i]) == 0){
       return i;
@@ -415,9 +424,9 @@ static void remove_register_indicators(cstr str){
   cstr tmp = str;
    
   while((tmp = strstr(str, "sp"))){
-	//Convert sp to r0
-	tmp[0] = 'r';
-	tmp[1] = '0';
+    //Convert sp to r0
+    tmp[0] = 'r';
+    tmp[1] = '0';
   }
 
   while((tmp = strchr(str, 'r')) != NULL){
@@ -440,12 +449,12 @@ static void remove_register_indicators(cstr str){
 
 
 //Checks the string for any non number characters
-static bool isBadString(cstr __restrict__ str){
+static bool isBadString(cstr str){
 	if(!(str = strchr(str, ' ')) ) return false; //Checks for the first spacebar. If there is no spacebar it returns false
 	while(*str != 0){
 		if(*str >= 'a' && *str <= 'z') return true;
 		if(*str >= 'a' && *str <= 'z') return true;
-		if(!(*str >= '0' && *str <= '9') && *str != ' ') return true;
+		if(!(*str >= '0' && *str <= '9') && (*str != ' '  && *str != '-')) return true;
 		str++;
 	}
 	return false;
@@ -473,6 +482,9 @@ static void clean_text(fu_TextFile* t){
     if(tmp != NULL){
       *tmp = 0;
     }
+    /*while((tmp = strchr(t->text[i], '-'))){
+      
+    }*/
     
     if(strlen(t->text[i]) == 0){ //Remove blank lines
       fu_delete_text(t, i);
@@ -557,15 +569,13 @@ fu_BinFile assemble_s(fu_TextFile assembly){
       tmp = "0";
     
     u32 dest, a, b, c;
-    dest = 0;
-    a = 0;
-    b = 0;
-    c = 0;
     
-    //If the assembly does not need all of the arguments then sscanf will not set a,b,c so it is safe to use. All varibles are set to 0 which removes and possiblity that it will overrite any bits if set is used
+    //If the assembly does not need all of the arguments then sscanf will not set a,b,c so it is safe to use. 
+    //All varibles are set to 0 which removes and possiblity that it will overrite any bits if set is used
     sscanf(tmp, "%u %u %u %u", &dest, &a, &b, &c); 
     if(logging){
       printf("pc: %llX:  %s %s\n", i * 4 + start_addr, opcode_str[opcode], tmp);
+      //printf("pc: %llX:  %s %X, %X, %X\n", i * 4 + start_addr, opcode_str[opcode], a, b, c);
     }
     //When calling the function pointer, the function being called has no clue how many arguments are being passed in.
     //All argument registers are overwritten in this function and the called function has no way of telling if there is arguments set past it's
@@ -579,7 +589,7 @@ fu_BinFile assemble_s(fu_TextFile assembly){
   return ret;
 }
 
-fu_BinFile assemble(const char* __restrict__ file_path){
+fu_BinFile assemble(char* __restrict__ file_path){
   fu_BinFile ret;
   fu_TextFile input = fu_load_text_file(file_path);
   ret = assemble_s(input);

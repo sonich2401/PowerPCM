@@ -9,6 +9,6 @@ typedef struct{
   fu_BinFile bin;
 }Asm_file_t;
 
-fu_BinFile assemble(const char* __restrict__ file_path);
+fu_BinFile assemble(char* __restrict__ file_path);
 fu_BinFile assemble_s(fu_TextFile assembly);
 

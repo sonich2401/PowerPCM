@@ -19,10 +19,12 @@ typedef struct{
 
   CR_t cr;
   
+  unsigned long long ctr;
+  
 
   union {
-    long long r[32];
-    unsigned long long ru[32];
+    long r[32];
+    unsigned long ru[32];
 
     struct{
       ptr_t sp;

@@ -36,7 +36,7 @@ main:
        sc 0
        
        mr r3, r14 ;;Get vec* again
-       bl vector_deconstruct
+       ;bl vector_deconstruct
        
        ;Cleanup
        mr r3, r14

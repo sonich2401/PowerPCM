@@ -553,7 +553,6 @@ FU_COMPILE_MODE fu_List fu_helper__get_dir_contents(fu_string FU_RESTRICT folder
     return err_ret;
   }
 
-  fu_index cursor = 0;
   while((dir = readdir(d)) != NULL){
     #ifdef FU_DEBUG
       if(folder_strlen > 4000){
@@ -590,7 +589,6 @@ FU_COMPILE_MODE fu_List fu_helper__get_dir_contents(fu_string FU_RESTRICT folder
           fu_free_list(subfolder_contents);
         } else {
           tmp_list = subfolder_contents; //RET was null so we instead use the newly allocated buffer as the list
-          cursor = tmp_list.size;
         }
         
         ret = tmp_list.text;
@@ -605,7 +603,6 @@ FU_COMPILE_MODE fu_List fu_helper__get_dir_contents(fu_string FU_RESTRICT folder
 
     if(ret == NULL){
       ret = (fu_string*)malloc(sizeof(fu_string) * 1);
-      cursor = 1;
       //for(int i = 0; i < 5; i++){
       //  ret[i] = FU_NULL;
       //}

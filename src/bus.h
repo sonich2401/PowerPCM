@@ -91,6 +91,12 @@ typedef union {
 #define RAM_START 0
 #define RAM_END OAM_START- 1
 
+#ifdef __CPU_C__ //Dont let any other files other than cpu.c have access to this function
+void load_rom_dat(const char* restrict bytes, u32 size);
+#endif
+
+#define BUS_FAST_RW
+
 
 
 
@@ -106,27 +112,27 @@ void write16(addr_t addr, u16 val);
 void write32(addr_t addr, u32 val);
 void write64(addr_t addr, u64 val);
 
-#ifdef __CPU_C__ //Dont let any other files other than cpu.c have access to this function
-void load_rom_dat(const char* restrict bytes, u32 size);
-#endif
+u8 syscall_scanf(u8 r1, u8 r2);
 
 #else
 
 
 extern bus_t bus;
-#define BUS_WRITE_TEMPLATE(type) *((type*)&bus->DMA[addr]) = val
+#define BUS_WRITE_TEMPLATE(type, addr, val) *((type*)&bus.DMA[addr]) = val
 
-#define BUS_READ_TEMPLATE(type) *((type*)&bus->DMA[addr])
+#define BUS_READ_TEMPLATE(type, addr) *((type*)&bus.DMA[addr])
 
-#define read8(addr) BUS_READ_TEMPLATE(u8)
-#define read16(addr) BUS_READ_TEMPLATE(u16)
-#define read32(addr) BUS_READ_TEMPLATE(u32)
-#define read64(addr) BUS_READ_TEMPLATE(u64)
+#define read8(addr) BUS_READ_TEMPLATE(u8, addr)
+#define read16(addr) BUS_READ_TEMPLATE(u16, addr)
+#define read32(addr) BUS_READ_TEMPLATE(u32, addr)
+#define read64(addr) BUS_READ_TEMPLATE(u64, addr)
 
-#define write8(addr, val) BUS_WRITE_TEMPLATE(u8)
-#define write16(addr, val) BUS_WRITE_TEMPLATE(u16)
-#define write32(addr, val) BUS_WRITE_TEMPLATE(u32)
-#define write64(addr, val) BUS_WRITE_TEMPLATE(u64)
+#define write8(addr, val) BUS_WRITE_TEMPLATE(u8, addr, val)
+#define write16(addr, val) BUS_WRITE_TEMPLATE(u16, addr, val)
+#define write32(addr, val) BUS_WRITE_TEMPLATE(u32, addr, val)
+#define write64(addr, val) BUS_WRITE_TEMPLATE(u64, addr, val)
+
+#define syscall_scanf(r1, r2) (scanf((const char*)&bus.DMA[cpu.ru[r1]], (const char*)&bus.DMA[cpu.ru[r2]]))
 
 
 #endif

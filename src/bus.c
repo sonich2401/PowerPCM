@@ -1,6 +1,6 @@
 #include "bus.h"
 #include "cpu.h"
-#ifdef BUS_FAST_RW
+#ifndef BUS_FAST_RW
 static bus_t bus;
 #else
 bus_t bus;
@@ -11,11 +11,13 @@ bus_t bus;
 #include <stdlib.h>
 #include <stdio.h>
 
+#define BUS_NO_OOB_CHECK
+
 #ifndef BUS_NO_OOB_CHECK
 void oob_check(addr_t addr){
   return;
   if(addr >= BUS_SIZE){
-    fprintf(stderr, "ERR bus.c: addr = %X and is bigger than the max %X by the amount %X\n", addr, BUS_SIZE, addr - BUS_SIZE);
+    fprintf(stderr, "ERR bus.c: addr = %llX and is bigger than the max %X by the amount %llX\n", addr, BUS_SIZE, addr - BUS_SIZE);
     abort();
   }
 }
@@ -53,9 +55,19 @@ void write64(addr_t addr, u64 val){
   WRITE_TEMPLATE(u64);
 }
 
+inline u8 syscall_scanf(u8 r1, u8 r2){
+  return scanf((const char*)&bus.DMA[cpu.ru[r1]], (const char*)&bus.DMA[cpu.ru[r2]]);
+}
+
+
+#endif
+
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
 void load_rom_data(const char* restrict bytes, u32 size){
   //memcpy(&bus.ROM[0], bytes, size);
   
@@ -65,5 +77,3 @@ void load_rom_data(const char* restrict bytes, u32 size){
   }
 }
 
-
-#endif

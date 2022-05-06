@@ -33,3 +33,6 @@
 *.pdf
 *.linux
 *.7z
+*.idx
+*.bin
+compile_commands.json

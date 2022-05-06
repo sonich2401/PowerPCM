@@ -21,6 +21,8 @@ void cpu_init(){
   cpu.pc = 0;
   cpu.lr = 0;
   cpu.cr.byte = 0;
+  
+  cpu.ctr = 0;
 
   //Clear BUS
   for(ptr_t i = 0; i < BUS_SIZE; i++){
@@ -81,9 +83,9 @@ void print_registers(){
     char* tmp_str = alloca(500);
     //char* tmp_str2 = alloca(500);
     if(i > 9) {
-      sprintf(tmp_str, "%s%u:\t%llX", word, i, cpu.ru[i]);
+      sprintf(tmp_str, "%s%u:\t%lX", word, i, cpu.ru[i]);
     }else{
-      sprintf(tmp_str, "%s%u:\t%llX", word, i, cpu.ru[i]);
+      sprintf(tmp_str, "%s%u:\t%lX", word, i, cpu.ru[i]);
     }
     printf("%s\t", tmp_str);
     #if 0

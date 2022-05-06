@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "types.h"
 
-#define OPCODE_LEN 42
+#define OPCODE_LEN 44
 
 typedef unsigned int opcode_t;
 
@@ -57,12 +57,17 @@ typedef enum {
 	MFLR,
 	MTLR,
 	MR,
+	
 	BNE,
 	BEQ,
 	BGT,
 	BGE,
 	BLT,
 	BLE,
+	
+	BDNZ,
+	BDZ,
+	
 	CMP,
 	CMPI,
 	BLR,
