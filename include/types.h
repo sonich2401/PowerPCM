@@ -33,5 +33,13 @@ typedef u64 dword;
 #define LOG_LEN 34
 
 
-#define CONV_S32(val)   (*((s32*)&val))
-#define CONV_U32(val)   (*((u32*)&val))
+//I thought you needed to convert a u32 to a s32 for negitive number addition 
+//but I forgot that -1 = 0xFFFF so it doesn't matter the type of the varible.
+//I kept this code here so that if removing this intruduces a bug you can revert it easily.
+#ifdef ASM_SAFE_CASTS
+       #define CONV_S32(val)   (*((s32*)&val))
+       #define CONV_U32(val)   (*((u32*)&val))
+#else
+       #define CONV_S32(val)   (val)
+       //#define CONV_U32(val)   (*((u32*)&val))
+#endif

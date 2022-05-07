@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "types.h"
 
-#define OPCODE_LEN 44
+#define OPCODE_LEN 47
 
 typedef unsigned int opcode_t;
 
@@ -56,6 +56,8 @@ typedef enum {
 	DIVI,
 	MFLR,
 	MTLR,
+	MFCTR,
+	MTCTR,
 	MR,
 	
 	BNE,
@@ -67,6 +69,7 @@ typedef enum {
 	
 	BDNZ,
 	BDZ,
+	BDCTRL,
 	
 	CMP,
 	CMPI,

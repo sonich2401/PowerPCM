@@ -35,12 +35,12 @@ main:
        li r3, 10
        sc 0
        
-       bl print_heap
        mr r3, r14 ;;Get vec* again
-       ;bl vector_deconstruct
+       bl vector_deconstruct
        
+       bl print_heap
        ;Cleanup
        mr r3, r14
-       ;bl free
+       bl free
 
        end 0

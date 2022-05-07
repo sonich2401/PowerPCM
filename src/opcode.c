@@ -34,8 +34,12 @@ const char* opcode_str[OPCODE_LEN] = {
 	"MULI",
 	"DIV",
 	"DIVI",
+	
 	"MFLR",
 	"MTLR",
+	"MFCTR",
+	"MTCTR",
+	
 	"MR",
 	"BNE",
 	"BEQ",
@@ -46,6 +50,7 @@ const char* opcode_str[OPCODE_LEN] = {
 	
 	"BDNZ",
 	"BDZ",
+	"BDCTRL",
 	
 	"CMP",
 	"CMPI",
@@ -336,6 +341,12 @@ static void func_bdnz(u32 opdat){
 	}
 }
 
+static void func_bdctrl(u32 opdat){
+	TYPE_0
+	
+	jump_l(cpu.ctr);
+}
+
 static void func_blr(u32 opdat){
 	TYPE_0
 	cpu.pc = cpu.lr;
@@ -465,6 +476,17 @@ static void func_mflr(u32 opdat){
 	cpu.ru[dest] = cpu.lr;
 }
 
+static void func_mtctr(u32 opdat){
+	TYPE_E
+	cpu.ctr = cpu.ru[dest];
+}
+
+static void func_mfctr(u32 opdat){
+	TYPE_E
+	cpu.ru[dest] = cpu.ctr;
+}
+
+
 #include <stdlib.h>
 static void func_end(u32 opdat){
 	TYPE_F
@@ -561,6 +583,7 @@ void init_opcodes(){
 	
 	DEF_OP(BDZ, func_bdz);
 	DEF_OP(BDNZ, func_bdnz);
+	DEF_OP(BDCTRL, func_bdctrl);
 	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);
@@ -577,6 +600,8 @@ void init_opcodes(){
 	DEF_OP(MR, func_mr);
 	DEF_OP(MFLR, func_mflr);
 	DEF_OP(MTLR, func_mtlr);
+	DEF_OP(MFCTR, func_mfctr);
+	DEF_OP(MTCTR, func_mtctr);
 	DEF_OP(SC, func_syscall);
 	DEF_OP(END, func_end);
 	

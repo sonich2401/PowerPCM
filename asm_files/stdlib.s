@@ -12,8 +12,6 @@
 ; malloc(unsigned int size)
 ; free(void* ptr)
 
-__puti__string__buffer: "OOB MEM OOB MEM OOB MEM"
-
 
 strlen:
   subi r0, r0, 8
@@ -144,6 +142,7 @@ itoa:
   addi r0, r0, 12
   blr
   
+.macro puti_temp_string_size: 30
 puti:
   ;Backup this crap
   subi r0, r0, 12
@@ -152,10 +151,12 @@ puti:
   mflr r4
   sw r4, 0(r0)
   ; call the stupid function
-  li r4, __puti__string__buffer
+  subi r0, r0, puti_temp_string_size     ;Alloc 30 bytes for the string
+  mr r4, r0
   bl itoa
-  li r3, __puti__string__buffer
+  mr r3, r0    ;Get addr of string
   bl put         ;Print this crap to the screen
+  addi r0, r0, puti_temp_string_size   ;Dealloc temp string
   lw r4, 0(r0)
   mtlr r4
   lw r4, 4(r0)
@@ -185,36 +186,105 @@ memcpy:
   blr
 
 ;; MALLOC IMPLEMENTATION
+;#########################################################################################
+; How does it work?
+
+; This implementation of malloc has a table of blocks of memory. Each table stores the pointer, size, and free state.
+; The first node contains all of the memory in the RAM. The 'free' state of the node is marked as free.
+
+; When you call malloc(), it searches the nodes for a freed node. If it finds one that it can fit into, it will find a node that has not be used.
+; The node that was found to have free memory will now have a size of the newly malloced object. The remaing bytes that were not used by the
+; newly malloced object will be moved to a new node that contains a pointer to the location in memory after the newly malloced object.
+; It's state is kept set to free so that other future malloc calls can use it. The newly malloced object is then set to false so that free() knows to not delete it
+; Here is an example
+
+; === STEP 0 === Inital state after 'start' is done executing
+; table[0] = {
+;  ptr = 4000,
+;  size = 3000,
+;  free = true
+;}
+;table[1] = {
+;  ptr = NULL,
+;  size = NULL,
+;  free = NULL
+;}
+
+; === STEP 1 === User calls malloc(30);    the old size of the block is stored temporality in 'old_size'
+;new_size = 30;
+;old_size = 3000;
+
+; table[0] = {      ; The table is now marked as not free and has a size of 30 now. Notice the ptr has not changed as well
+;  ptr = 4000,
+;  size = 30,
+;  free = false
+;}
+;table[1] = {        ; The program has also found this node to be NULL so it saves the index to copy the remaining bytes into
+;  ptr = NULL,
+;  size = NULL,
+;  free = NULL
+;}
+
+; === STEP 2 ===    Orignal node is copied over with the remaing_bytes not used by table[0]
+; table[0] = {    
+;  ptr = 4000,
+;  size = 30,
+;  free = false
+;}
+;table[1] = {
+;  ptr = table[0].ptr + table[0].size,
+;  size = old_size - table[0],
+;  free = true
+;}
+
+; === FINAL RESULT ===
+; table[0] = {    
+;  ptr = 4000,
+;  size = 30,
+;  free = false
+;}
+;table[1] = {  ; This block has now become 30 bytes less than what it orginally was 
+;  ptr = 4030,
+;  size = 2970,
+;  free = true
+;}
+
+; Because all memory is assumed to be 0 at boot, there is no need to initalize anything other than the first node
+
+
+; Macro table sizes and start locations
+;___MALLOC__BLOCK__  is a symbol defined by the assembler by default
+.macro ___MALLOC__BLOCK_COUNT: 100
+.macro ___MALLOC__SIZE__: 10000
 
 .macro struct_malloc_ptr: 0
 .macro struct_malloc_size: 4
 .macro struct_malloc_free: 8
+.macro sizeof_struct_malloc: 9
 
-___malloc__entry__construct:
-  sw r4, struct_malloc_ptr(r3)
-  sw r5, struct_malloc_size(r3)
-  sb r6, struct_malloc_free(r3)
-  blr
-  
-___malloc__merge__:
-  subi r0, r0, 4
-  addi r0, r0, 4
-  blr
+
+;struct malloc_entry{
+;  void* ptr;
+;  unsigned int size;
+;  char free;
+;}
+;##########################################################################################
+
+
 
 ___malloc__get__empty:
-  subi r0, r0, 16
+  subi r0, r0, 20
   sw r14, 0(r0)
   mflr r14
   sw r14, 4(r0)
   sw r15, 8(r0)
   sw r16, 12(r0)
+  sw r17, 16(r0)
 
   li r14, ___MALLOC__BLOCK_COUNT
-  lw r14, 0(r14)
   subi r14, r14, 1
-  muli r14, 14, 9
+  muli r14, 14, sizeof_struct_malloc
   li r15, ___MALLOC__BLOCK__
-  lw r15, 0(r15)
   add r14, r14, r15
   ___malloc__get__empty__loop:
     lw r16, struct_malloc_ptr(r15)
@@ -223,7 +293,7 @@ ___malloc__get__empty:
     mr r3, r15
     b ___malloc__get__cleanup
     ___malloc__get__empty__loop__continue:
-    addi r15, r15, 9
+    addi r15, r15, sizeof_struct_malloc
     cmp r15, r14
     ble ___malloc__get__empty__loop
   
@@ -232,47 +302,32 @@ ___malloc__get__empty:
   cmp r15, r3
   beq ___malloc__if__valid__retrun__value
   ;Not a valid return value. Merge blocks and try again
-    ;Backup register 17 and 18
-      subi r0, r0, 8
-      sw r17, 0(r0)
-      sw r18, 4(r0)
-    li r14, ___MALLOC__BLOCK_COUNT
-    lw r14, 0(r14)
-    subi r14, r14, 1
-    muli r14, 14, 9
     li r15, ___MALLOC__BLOCK__
-    lw r15, 0(r15)
-    add r14, r14, r15
     ; Move r15 back so that the loop does not need extra logic
-    subi r15, r15, 9
+    subi r15, r15, sizeof_struct_malloc
     ___malloc__merge__loop:
-      addi r15, r15, 9
+      addi r15, r15, sizeof_struct_malloc
       cmp r15, r14
       ; dont go over block amounts
-      bgt ___malloc__merge__cleanup
+      bgt ___malloc__if__valid__retrun__value
       
       lb r16, struct_malloc_free(r15)
-      cmpi r16, 1
-      bne ___malloc__merge__loop   ;free != 1 so continue
-      addi r17, r15, 9        ; Check to next block
+      cmpi r16, true
+      bne ___malloc__merge__loop     ;free != 1 so continue
+      addi r17, r15, sizeof_struct_malloc        ; Check to next block
       lb r16, struct_malloc_free(r17)
-      cmpi r16, 1
+      cmpi r16, true
       bne ___malloc__merge__loop   ;free != 1 so continue
-      ;;Two adjactent free nodes found. Move memory into 'i' and delete 'i + 1'
-        lw r16, struct_malloc_size(r17)     ;Get size of i+1
-        lw r18, struct_malloc_size(r15)     ;Get size of i
-        add r16, r18, r16     ; malloc[i].size += malloc[i + 1].size
-        sw r16, struct_malloc_size(r15)    ;Set size of i
-        ;;Delete i + 1
-          li r16, 0
-          sw r16, struct_malloc_ptr(r15)
-        ; Return the null node
-          mr r3, r17
-    ___malloc__merge__cleanup:
-    ; Restore register 17
-      lw r17, 0(r0)
-      lw r18, 4(r0)
-      addi r0, r0, 8
+  ;;Two adjactent free nodes found. Move memory into 'i' and delete 'i + 1'
+  lw r16, struct_malloc_size(r17)     ;Get size of i+1
+  lw r14, struct_malloc_size(r15)     ;Get size of i
+  add r16, r14, r16     ; malloc[i].size += malloc[i + 1].size
+  sw r16, struct_malloc_size(r15)    ;Set size of i
+  ;;Delete i + 1
+    li r16, 0
+    sw r16, struct_malloc_ptr(r15)
+  ; Return the null node
+    mr r3, r17
   
   ___malloc__if__valid__retrun__value:
   lw r14, 4(r0)
@@ -280,7 +335,8 @@ ___malloc__get__empty:
   lw r14, 0(r0)
   lw r15, 8(r0)
   lw r16, 12(r0)
-  addi r0, r0, 16
+  lw r17, 16(r0)
+  addi r0, r0, 20
   blr
 
 
@@ -292,22 +348,18 @@ malloc:
   li r3, 0
   blr             ; return NULL;
   __malloc__passed__null__check:
-  subi r0, r0, 32
+  subi r0, r0, 24
   sw r14, 0(r0)
   mflr r14
   sw r14, 4(r0)
   sw r15, 8(r0)
   sw r16, 12(r0)
   sw r17, 16(r0)
-  sw r18, 20(r0)
-  sw r19, 24(r0)
   
   li r14, ___MALLOC__BLOCK__
-  lw r14, 0(r14)
   ;Get end ptr
   li r15, ___MALLOC__BLOCK_COUNT
-  lw r15, 0(r15)
-  muli r15, r15, 9
+  muli r15, r15, sizeof_struct_malloc
   add r15, r15, r14
   ;Start loop
   ___malloc__search__block__loop:
@@ -345,7 +397,7 @@ malloc:
     ; break;
     b ___malloc__cleanup
     __malloc__search__block__loop__continue:
-    addi r14, r14, 9
+    addi r14, r14, sizeof_struct_malloc
     cmp r14, r15
     bne ___malloc__search__block__loop
   
@@ -360,22 +412,18 @@ malloc:
   lw r15, 8(r0)
   lw r16, 12(r0)
   lw r17, 16(r0)
-  lw r18, 20(r0)
-  lw r19, 24(r0)
-  addi r0, r0, 32
+  addi r0, r0, 24
   blr
   
+
 free:
   li r4, ___MALLOC__BLOCK_COUNT
-  lw r4, 0(r4)
-  mr r6, r4
-  muli r4, r4, 9
+  muli r4, r4, sizeof_struct_malloc
   li r7, ___MALLOC__BLOCK__
-  lw r7, 0(r7)
   add r4, r4, r7
   
   __free__loop:
-    subi r4, r4, 9
+    subi r4, r4, sizeof_struct_malloc
     cmp r4, r7
     bge __free__loop__if__pass
     ;ptr was not found!
@@ -391,88 +439,6 @@ free:
   blr
 
 
-printHeapMessage1: "Entry: "
-printHeapMessage2: "Size: "
-printHeapMessage3: "Free: "
-printHeapMessage4: "PTR: "
-
-print_heap:
-  subi r0, r0, 32
-  sw r14, 0(r0)
-  sw r15, 4(r0)
-  sw r16, 8(r0)
-  sw r17, 12(r0)
-  sw r18, 16(r0)
-  sw r19, 20(r0)
-  mflr r14
-  sw r14, 24(r0)
-  
-  li r14, 200
-  li r15, 0
-  li r16, ___MALLOC__BLOCK__
-  lw r16, 0(r16)
-  ___print_heap_loop:
-    cmpi r15, r14
-    bge ___print_heap__cleanup
-    
-    lw r17, struct_malloc_ptr(r16)
-    cmpi r17, 0
-    beq ___print_heap_loop__conitune
-
-    li r3, printHeapMessage1
-    bl put
-    
-    mr r3, 15
-    bl puti
-    
-    li r3, 10
-    sc 0
-    
-    li r3, printHeapMessage2
-    bl put
-    
-    lw r3, struct_malloc_size(r16)
-    bl puti
-    
-    li r3, 10
-    sc 0
-    
-    li r3, printHeapMessage3
-    bl put
-    
-    lb r3, struct_malloc_free(r16)
-    bl puti
-    
-    li r3, 10
-    sc 0
-    
-    li r3, printHeapMessage4
-    bl put
-    
-    lw r3, struct_malloc_ptr(r16)
-    bl puti
-    
-    li r3, 10
-    sc 0
-    sc 0
-
-    ___print_heap_loop__conitune:
-    addi r15, r15, 1
-    addi r16, r16, 9
-    b ___print_heap_loop
-    
-  ___print_heap__cleanup:
-  lw r14, 24(r0)
-  mtlr r14
-  lw r14, 0(r0)
-  lw r15, 4(r0)
-  lw r16, 8(r0)
-  lw r17, 12(r0)
-  lw r18, 16(r0)
-  lw r19, 20(r0)
-  addi r0, r0, 32
-  blr
-
 
 realloc:
   subi r0, r0, 16
@@ -483,23 +449,21 @@ realloc:
   sw r16, 12(r0)
   
   li r14, ___MALLOC__BLOCK_COUNT
-  lw r14, 0(r14)
   li r15, ___MALLOC__BLOCK__
-  lw r15, 0(r15)
   
   __realloc__loop:
-    lw r16, 0(r15)
+    lw r16, struct_malloc_ptr(r15)
     
     ; Is the pointer the same?
     cmp r16, r3
     bne __realloc__loop__continue
     
     ; Block was found. Grab the size of the block
-    lw r14, 4(r15)
+    lw r14, struct_malloc_size(r15)
     b __realloc__save__new
     
     __realloc__loop__continue:
-    addi r15, r15, 9
+    addi r15, r15, sizeof_struct_malloc
     subi r14, r14, 1
     cmpi r14, 0
     bne __realloc__loop
@@ -542,90 +506,28 @@ realloc:
   addi r0, r0, 16
   blr
 
-; Four chars give us a word to play with
-___MALLOC__START__: "///"
-___MALLOC__BLOCK__: "///"
-___MALLOC__BLOCK_COUNT: "///"  
-___MALLOC__SIZE__: "///"
-
-;struct malloc_entry{
-;  void* ptr;
-;  unsigned int size;
-;  char free;
-;}
 
 
 
 
 
-
-
-
-
-
-
+;  ==================   ENTRY   =========================
   
 start:
-  addi r3, r0, 1
+  ;;Set root node because we can assume that all memory is NULL when boot happens
   li r2, ___MALLOC__BLOCK__
-  sw r3, 0(r2)
+      ;Calculate end of malloc block section to get the beggining of the heap
+  li r3, ___MALLOC__BLOCK_COUNT
+  muli r3, r3, sizeof_struct_malloc
+  addi r3, r3, ___MALLOC__BLOCK__
   
-  ;Number of blocks allowed
-  li r3, 80
-  li r2, ___MALLOC__BLOCK_COUNT
-  sw r3, 0(r2)
-  
-  ;Get start ptr
-  li r6, 9           ; sizeof(malloc_entry)
-  mul r3, r3, r6
-  
-  ;Get ___MALLOC__BLOCK__ and add sizeof(malloc_entry) * 200
-  add r3, r3, r0
-  addi r3, r3, 1
-  li r2, ___MALLOC__START__
-  sw r3, 0(r2)
-  
-  ; Allowed space to play with
-  ;li r3, 2000
-  li r3, 50000
-  sub r3, r3, r0
-  subi r3, r3 1000
-  li r2, ___MALLOC__SIZE__
-  sw r3, 0(r2)
-  
-  ;;;Init all malloc blocks
-  ; i = ___MALLOC__BLOCK_COUNT
-  li r2, ___MALLOC__BLOCK_COUNT
-  lw r5, 0(r2)
-  subi r5, r5, 1
-  ; Registers are used as values to set things to
-  li r3, 0
-  li r4, 1
-  li r2, ___MALLOC__BLOCK__
-  lw r2, 0(r2)
-  __malloc__block__init__loop:
-    sw r3, 0(r2)
-    sw r3, 4(r2)
-    sb r4, 8(r2)
-    ;ptr += sizeof(malloc_entry)
-    add r2, r2, r6
-    subi r5, r5, 1
-    cmpi r5, 0
-    bne __malloc__block__init__loop
-  
-  ;;Set root node
-  li r2, ___MALLOC__BLOCK__
-  lw r2, 0(r2)
-  li r3, ___MALLOC__START__
-  lw r3, 0(r3)
   li r4, ___MALLOC__SIZE__
-  lw r4, 0(r4)
   ; node.ptr = malloc_start;
   ; node.size = malloc_size
-  sw r3, 0(r2)
-  sw r4, 4(r2)
-  
-  
-  
+  sw r3, struct_malloc_ptr(r2)
+  sw r4, struct_malloc_size(r2)
+  ; node.free = 1;  
+  li r4, 1
+  sb r4, struct_malloc_free(r2)
   
   b main

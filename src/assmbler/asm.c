@@ -121,6 +121,7 @@ static u32 func_0(u8 opcode){
 
 #define func_bdz func_F
 #define func_bdnz func_F
+#define func_bdctrl func_0
 
 #define func_cmp func_A
 #define func_cmpi func_D
@@ -129,6 +130,8 @@ static u32 func_0(u8 opcode){
 #define func_syscall func_F
 #define func_mtlr func_E
 #define func_mflr func_E
+#define func_mtctr func_E
+#define func_mfctr func_E
 #define func_end func_F
 
 #define func_nop func_0
@@ -182,6 +185,7 @@ static inline void init_ops(){
 	
 	DEF_OP(BDZ, func_bdz);
 	DEF_OP(BDNZ, func_bdnz);
+	DEF_OP(BDCTRL, func_bdctrl);
 	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);
@@ -198,6 +202,8 @@ static inline void init_ops(){
 	DEF_OP(MR, func_mr);
 	DEF_OP(MFLR, func_mflr);
 	DEF_OP(MTLR, func_mtlr);
+	DEF_OP(MFCTR, func_mfctr);
+	DEF_OP(MTCTR, func_mtctr);
 	DEF_OP(SC, func_syscall);
 	DEF_OP(END, func_end);
 	
@@ -296,11 +302,18 @@ typedef struct{
 static u64 pc; //Used to find where to place the data
 extern char logging;
 
-static Intermediate_Asm_File_t get_labels(fu_TextFile* txt){
+static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__ predefined){
   pc = 4; //For some reason it needs to be 8 instead of 4?
   u64 start_pc = 0;//Set the rom start address to 0. If this stays zero after all labels are decoded then 'start' was never defined
-  vector labels = vector_create(sizeof(Label), free_label);
+  vector labels;
   vector globals = vector_create(sizeof(Label), free_label);
+  
+  //Add the predefined labels
+  if(predefined){
+    labels = *predefined;
+  }else{
+    labels = vector_create(sizeof(Label), free_label);
+  }
   
   Intermediate_Asm_File_t ret;
   ret.asm_global.bin = fu_alloc_bin_file(sizeof(u32));
@@ -394,6 +407,7 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt){
       i--;
       continue;
     }
+    #if 0
     if(strstr(txt->text[i], ".global") != NULL){
       Label tmp = Label_construct(strdup(txt->text[i]), pc);
       tmp.str[strlen(tmp.str) - 1] = 0;
@@ -402,6 +416,7 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt){
       i--;
       continue;
     }
+    #endif
     
     //This line of the file was assembly code
     
@@ -454,7 +469,8 @@ static bool isBadString(cstr str){
 	while(*str != 0){
 		if(*str >= 'a' && *str <= 'z') return true;
 		if(*str >= 'a' && *str <= 'z') return true;
-		if(!(*str >= '0' && *str <= '9') && (*str != ' '  && *str != '-')) return true;
+		if(*str == '-') return true; //Disable negitive numbers for now
+		if(!(*str >= '0' && *str <= '9') && (*str != ' ')) return true;
 		str++;
 	}
 	return false;
@@ -482,10 +498,7 @@ static void clean_text(fu_TextFile* t){
     if(tmp != NULL){
       *tmp = 0;
     }
-    /*while((tmp = strchr(t->text[i], '-'))){
-      
-    }*/
-    
+
     if(strlen(t->text[i]) == 0){ //Remove blank lines
       fu_delete_text(t, i);
       i--; // i - 1 + 1 = i
@@ -501,8 +514,9 @@ char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
   for (u64 i1 = 0; i1 < labels.size(&labels); i1++) {
     Label* ele1 = (Label*)labels.index(&labels, i1);
     char* cache = strstr(ele, ele1->str);
-    if (cache != NULL) {
+    if (cache != NULL && *(cache - 1) == ' ') {
       char* tmp_string = cstrdup_stack(cache);
+      
       char* helper;
       if ((helper = strchr(tmp_string, ' '))) {
         *helper = 0;
@@ -511,6 +525,7 @@ char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
       if (strcmp(tmp_string, ele1->str) != 0) {
         continue;
       }
+      
       char num_buffer[50];
       sprintf(num_buffer, "%llu", ele1->ptr);
       ele = cstrrep(ele, ele1->str, num_buffer);
@@ -522,19 +537,58 @@ char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
 }
 
 
+#define PUSH_LABEL(key, val) tmp_label = Label_construct(strdup(key), val); ret.push_back(&ret, &tmp_label)
+
+static inline vector get_predefined_labels(){
+  vector ret;
+  vector_init(&ret, sizeof(Label), free_label);
+  Label tmp_label;
+  
+  PUSH_LABEL("__STACK_TOP__", STACK_SIZE);
+  PUSH_LABEL("___MALLOC__BLOCK__", STACK_SIZE);
+  
+  PUSH_LABEL("true", 1);
+  PUSH_LABEL("TRUE", 1);
+  PUSH_LABEL("True", 1);
+  
+  PUSH_LABEL("false", 0);
+  PUSH_LABEL("FALSE", 0);
+  PUSH_LABEL("False", 0);
+  
+  PUSH_LABEL("NULL", 0);
+  PUSH_LABEL("null", 0);
+  PUSH_LABEL("nullptr", 0);
+  
+  //ret.push_back(&ret, &tmp_label);
+  return ret;
+}
+
+#undef PUSH_LABEL
+
+
+
+
+
+//MAIN ASSEMBLING CODE
+
+
 fu_BinFile assemble_s(fu_TextFile assembly){
   if(logging){
     puts("ASSEMBLING ...");
   }
   
-  fu_BinFile ret = fu_alloc_bin_file(ROM_SIZE);
-  char* tmp_bin = ret.bin;
   init_ops();
   
   fu_TextFile t = fu_create_text_copy(assembly);
   clean_text(&t); //Remove all junk characters
   
-  Intermediate_Asm_File_t tmp_asm = get_labels(&t);
+  vector predefined_labels = get_predefined_labels();
+  Intermediate_Asm_File_t tmp_asm = get_labels(&t, &predefined_labels); //resolve all labels and macros
+  
+  //Alloc only nessisary size  
+  fu_BinFile ret = fu_alloc_bin_file((tmp_asm.asm_global.bin.size + ((t.size + 2) * 4)) % ROM_SIZE);  
+  char* tmp_bin = ret.bin;
+  
   //Copy data segments into rom including start addr
   memcpy(ret.bin, tmp_asm.asm_global.bin.bin, tmp_asm.asm_global.bin.size);
   tmp_bin += tmp_asm.asm_global.bin.size;
@@ -548,15 +602,16 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     //Remove register indicators (aka. r13 or $r32, or %r2)
     remove_register_indicators(strchr(t.text[i], ' '));
 
-#ifndef DISABLE_ERR_CHECKING
+    #ifndef DISABLE_ERR_CHECKING
     if(isBadString(t.text[i])){
-	fprintf(stderr, "ERR: Assembler: Line %llu of the file contains invalid characters!\nAssembly dump is as follows which shows the offending code ...\n", i);
-	for(fu_index i1 = (i - 2) * ((i - 2) >= 0) ; i1 < (i + 5) && i1 < t.size; i1++){
-		fprintf(stderr, "%llu: \"%s\"\n", i1, t.text[i1]);
-	}
-	exit(EXIT_FAILURE);
+      fprintf(stderr, "ERR: Assembler: Line %llu of the file contains invalid characters!\nAssembly dump is as follows which shows the offending code ...\n", i);
+      while((i   - 2) >= t.size){i++;}
+      for(fu_index i1 = (i - 2); i1 < (i + 5); i1++){
+        fprintf(stderr, "%llu: \"%s\"\n", i1, t.text[i1]);
+      }
+      exit(EXIT_FAILURE);
     }
-#endif
+    #endif
 
     //Get opcode from memonic
     u32 opcode = name_to_instr(t.text[i]);
