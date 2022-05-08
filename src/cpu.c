@@ -17,7 +17,7 @@
 cpu_t cpu;
 extern char logging;
 
-void cpu_init(){
+INLINE void cpu_init(){
   cpu.pc = 0;
   cpu.lr = 0;
   cpu.cr.byte = 0;
@@ -39,7 +39,7 @@ void cpu_init(){
 
 void load_rom_data(const char* bytes, u32 size);//see bus.c. This line is just to keep the compiler happy ;)
 
-void load_rom(const char* bytes, u32 size){
+INLINE void load_rom(const char* bytes, u32 size){
   cpu_init();
   init_opcodes();
   load_rom_data(bytes, size); //see bus.c
@@ -49,7 +49,7 @@ void load_rom(const char* bytes, u32 size){
 }
 
 extern microcode_t opcode_ptr[OPCODE_LEN];
-inline void step(){
+INLINE void step(){
   u32  opdat = read32(cpu.pc + ROM_START);
   opcode_ptr[GET_OP(opdat)](opdat);
   cpu.pc += 4;
@@ -113,7 +113,7 @@ void print_registers(){
 }
 //#endif
 
-inline void print_cur(){
+INLINE void print_cur(){
   //u32 opdat = read32(ROM_START + cpu.pc);
   //char* str = opcode_to_name(GET_OP(opdat));
   //puts(str);
@@ -123,20 +123,20 @@ inline void print_cur(){
   //free(str);
 }
 
-inline void jump(ptr_t addr){
+INLINE void jump(ptr_t addr){
   cpu.pc = addr - 4;
 }
 
-inline void jump_r(ptr_t addr){
+INLINE void jump_r(ptr_t addr){
   cpu.pc += addr - 4;
 }
 
-inline void jump_l(ptr_t addr){
+INLINE void jump_l(ptr_t addr){
   cpu.lr = cpu.pc;
   jump(addr);
 }
 
-inline void jump_l_r(ptr_t addr){
+INLINE void jump_l_r(ptr_t addr){
   cpu.lr = cpu.pc;
   jump_r(addr);
 }

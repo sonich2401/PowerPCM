@@ -254,7 +254,7 @@ memcpy:
 
 ; Macro table sizes and start locations
 ;___MALLOC__BLOCK__  is a symbol defined by the assembler by default
-.macro ___MALLOC__BLOCK_COUNT: 100
+.macro ___MALLOC__BLOCK_COUNT: 500
 .macro ___MALLOC__SIZE__: 10000
 
 .macro struct_malloc_ptr: 0
@@ -364,7 +364,7 @@ malloc:
   ;Start loop
   ___malloc__search__block__loop:
     lb r16, struct_malloc_free(14)
-    cmpi r16, 1
+    cmpi r16, true
     bne __malloc__search__block__loop__continue
     ; Check for free has passed. Now get size
     lw r16, struct_malloc_size(r14)
@@ -385,13 +385,13 @@ malloc:
     sw r16, struct_malloc_ptr(r3)         ; empty->ptr = tmp_ptr
     sw r17, struct_malloc_size(r3)         ; empty->size = remaining_bytes
     ; empty->free = 1
-    li r17, 1
+    li r17, true
     sb r17, struct_malloc_free(r3)
     ; table[i].size = size
     sw r15, struct_malloc_size(r14)
      
     ___malloc__search__block__set__free:
-    ; table[i].free = 0
+    ; table[i].free = false
     li r16, 0
     sb r16, struct_malloc_free(r14)
     ; break;
@@ -416,6 +416,9 @@ malloc:
   blr
   
 
+
+___double__free__message: "Double free: LR = "
+___double__free__message1: ", PTR = "
 free:
   li r4, ___MALLOC__BLOCK_COUNT
   muli r4, r4, sizeof_struct_malloc
@@ -433,12 +436,40 @@ free:
     cmp r5, r3
     bne __free__loop
   ;Found node is stored in r4
-  ;node.free = true
+
+  
+  ;Has the node been double freed?
+  lb r3, struct_malloc_free(r4)
+  cmpi r3, true
+  bne ___free__double__free__pass
+    ;DOUBLE FREE DETECTED
+    lw r29, struct_malloc_ptr(r4)
+    mflr r30
+    li r3, ___double__free__message
+    bl put
+
+    
+    ;Print LR
+    mr r3, r30
+    bl puti
+    
+    li r3, ___double__free__message1
+    bl put
+    
+    ;Print PTR
+    mr r3, r29
+    bl puti
+    li r3, 10
+    sc 0
+    end 1
+  
+  ___free__double__free__pass:
+    ;node.free = true
   li r3, 1
-  sb r3, 8(r4)
+  sb r3, struct_malloc_free(r4)
   blr
 
-
+  
 
 realloc:
   subi r0, r0, 16
@@ -518,6 +549,7 @@ start:
   li r2, ___MALLOC__BLOCK__
       ;Calculate end of malloc block section to get the beggining of the heap
   li r3, ___MALLOC__BLOCK_COUNT
+  addi r3, r3, 1 ; Add another NULL block so that malloc doesnt need extra lodgic to figure out the end of the table
   muli r3, r3, sizeof_struct_malloc
   addi r3, r3, ___MALLOC__BLOCK__
   

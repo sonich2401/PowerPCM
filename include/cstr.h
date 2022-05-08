@@ -16,7 +16,7 @@ typedef char* cstr;
 
 //#define CSTR_DEBUG
 #define CSTR_RESTRICT __restrict__
-#define CSTR_COPY
+//#define CSTR_COPY
 //#define CSTR_NO_STRING_H
 //#define CSTR_USE_CSTR_ALLOC
 //#define CSTR_NO_STDIO_H

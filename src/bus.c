@@ -14,7 +14,7 @@ bus_t bus;
 #define BUS_NO_OOB_CHECK
 
 #ifndef BUS_NO_OOB_CHECK
-void oob_check(addr_t addr){
+void INLINE oob_check(addr_t addr){
   return;
   if(addr >= BUS_SIZE){
     fprintf(stderr, "ERR bus.c: addr = %llX and is bigger than the max %X by the amount %llX\n", addr, BUS_SIZE, addr - BUS_SIZE);
@@ -29,33 +29,33 @@ void oob_check(addr_t addr){
 
 #define WRITE_TEMPLATE(type) oob_check(addr); (*(type*)&bus.DMA[addr]) = val
 
-u8  read8(addr_t addr){
+u8 INLINE read8(addr_t addr){
   READ_TEMPLATE(u8);
 }
-u16 read16(addr_t addr){
+u16 INLINE read16(addr_t addr){
   READ_TEMPLATE(u16);
 }
-u32 read32(addr_t addr){
+u32 INLINE read32(addr_t addr){
   READ_TEMPLATE(u32);
 }
-u64 read64(addr_t addr){
+u64 INLINE read64(addr_t addr){
   READ_TEMPLATE(u64);
 }
 
-void write8(addr_t addr, u8 val){
+void INLINE write8(addr_t addr, u8 val){
   WRITE_TEMPLATE(u8);
 }
-void write16(addr_t addr, u16 val){
+void INLINE write16(addr_t addr, u16 val){
   WRITE_TEMPLATE(u16);
 }
-void write32(addr_t addr, u32 val){
+void INLINE write32(addr_t addr, u32 val){
   WRITE_TEMPLATE(u32);
 }
-void write64(addr_t addr, u64 val){
+void INLINE write64(addr_t addr, u64 val){
   WRITE_TEMPLATE(u64);
 }
 
-inline u8 syscall_scanf(u8 r1, u8 r2){
+u8 INLINE syscall_scanf(u8 r1, u8 r2){
   return scanf((const char*)&bus.DMA[cpu.ru[r1]], (const char*)&bus.DMA[cpu.ru[r2]]);
 }
 
@@ -68,7 +68,7 @@ inline u8 syscall_scanf(u8 r1, u8 r2){
 #include <string.h>
 #include <stdlib.h>
 
-void load_rom_data(const char* restrict bytes, u32 size){
+void load_rom_data(const char* __restrict__ bytes, u32 size){
   //memcpy(&bus.ROM[0], bytes, size);
   
   //Memcpy

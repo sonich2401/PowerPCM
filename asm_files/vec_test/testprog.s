@@ -1,46 +1,50 @@
 ; DEPENDS
 ; vector.s
-; stdlib.s
+; stdlib.s 
+
+
+.macro sizeof_int: 4
 
 main:
 
-       ; Get a new vector
-       li r3, 4         ;sizeof(int)
-       li r4, 0         ;decon_func_ptr = null
-       bl vector_alloc
-       mr r14, r3 ;Backup new pointer
-       bl puti
-       li r3, 10
-       sc 0
-       mr r3, r14
+       ; Allocate some memory
+       li r3, sizeof_int
+       bl malloc
        
-       subi r0, r0, 4
-       li r15, 1234
-       sw r15, 0(r0)
-       mr r4, r0  ;Set up data argument
+       ; Store value in new memory block
+       li r4, 1234
+       sw r4, 0(r3)
        
-       bl vector_push_back
-       addi r0, r0, 4
-       
-       mr r3, r14 ;Grab pointer
-       bl puti
-       li r3, 10
-       sc 0
-       mr r3, r14 ;Grab pointer
-       li r4, 0
-       bl vector_index
-       
+       ; Get value from memory block and print it
+       mr r30, r3   ; Backup memory address
        lw r3, 0(r3)
        bl puti
        li r3, 10
        sc 0
        
-       mr r3, r14 ;;Get vec* again
-       bl vector_deconstruct
        
-       bl print_heap
-       ;Cleanup
-       mr r3, r14
+       mr r3, r30
        bl free
+       
+       
+       li r3, 20
+       bl malloc
+       bl free
+       
+       li r3, 10
+       bl malloc
+       bl free
+       
+       li r3, 10
+       bl malloc
+       bl free
+
+li r3, 10
+       bl malloc
+       bl free       
+       ;bl print_heap
+       
+       
+       ;bl memleak_check
 
        end 0

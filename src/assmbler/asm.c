@@ -12,71 +12,74 @@
 #include "asm.h"
 
 
+#if 0
 
+#define TYPE_0(opcode) return opcode;
+#define TYPE_A(opcode) return SET_REG(SET_REG(SET_REG(opcode, 1, dest), 2, a), 3, b);
+#define TYPE_B(opcode) return SET_ADD_IMM(SET_REG(SET_REG(opcode, 1, dest), 2, a), imm);
+#define TYPE_C(opcode) return SET_IMM(SET_REG(SET_REG(opcode, 1, dest), 2, a), imm);
+#define TYPE_D(opcode) return SET_IMM(SET_REG(opcode, 1, dest), imm);
+#define TYPE_E(opcode) return SET_REG(opcode, 1, dest);
+#define TYPE_F(opcode) return SET_IMM_IMP(opcode, imm);
 
-#define TYPE_0(opcode) u32 ret = opcode; return ret;
+#else
 
-#define TYPE_A(opcode) u32 ret = opcode; \
-ret = SET_REG(ret, 1, dest);\
+#define TYPE_0(opcode) return opcode;
+
+#define TYPE_A(opcode) u32 ret = SET_REG(opcode, 1, dest);\
 ret = SET_REG(ret, 2, a);\
 ret = SET_REG(ret, 3, b);\
 return ret;
 
-#define TYPE_B(opcode) u32 ret = opcode; \
-ret = SET_REG(ret, 1, dest);\
+#define TYPE_B(opcode) u32 ret = SET_REG(opcode, 1, dest);\
 ret = SET_REG(ret, 2, a);\
 ret = SET_ADD_IMM(ret, imm);\
 return ret;
 
-#define TYPE_C(opcode) u32 ret = opcode; \
-ret = SET_REG(ret, 1, dest);\
+#define TYPE_C(opcode) u32 ret = SET_REG(opcode, 1, dest);\
 ret = SET_REG(ret, 2, a);\
 ret = SET_INDEX_OFFSET(ret, imm); \
 return ret;
+
   
-#define TYPE_D(opcode) u32 ret = opcode;\
-ret = SET_REG(ret, 1, dest);\
+#define TYPE_D(opcode) u32 ret = SET_REG(opcode, 1, dest);\
 ret = SET_IMM(ret, imm);\
 return ret;
 
-#define TYPE_E(opcode) u32 ret = opcode;\
-ret = SET_REG(ret, 1, dest); \
-return ret;
+#define TYPE_E(opcode) return SET_REG(opcode, 1, dest);
 
-#define TYPE_F(opcode) u32 ret = opcode;\
-ret = SET_IMM_IMP(ret, imm); \
-return ret;
+#define TYPE_F(opcode) return SET_IMM_IMP(opcode, imm);
 
+
+#endif
 
 
 
-
-
-static u32 func_A(u8 opcode, u8 dest, u8 a, u8 b){
+static INLINE u32 func_A(u8 opcode, u8 dest, u8 a, u8 b){
   TYPE_A(opcode);
 }
 
-static u32 func_B(u8 opcode, u8 dest, u8 a, u32 imm){
+static INLINE u32 func_B(u8 opcode, u8 dest, u8 a, u32 imm){
   TYPE_B(opcode);
 }
 
-static u32 func_C(u8 opcode, u8 dest, u32 imm, u8 a){
+static INLINE u32 func_C(u8 opcode, u8 dest, u32 imm, u8 a){
   TYPE_C(opcode);
 }
 
-static u32 func_D(u8 opcode, u8 dest, u32 imm){
+static INLINE u32 func_D(u8 opcode, u8 dest, u32 imm){
   TYPE_D(opcode);
 }
 
-static u32 func_E(u8 opcode, u8 dest){
+static INLINE u32 func_E(u8 opcode, u8 dest){
   TYPE_E(opcode);
 }
 
-static u32 func_F(u8 opcode, u32 imm){
+static INLINE u32 func_F(u8 opcode, u32 imm){
   TYPE_F(opcode);
 }
 
-static u32 func_0(u8 opcode){
+static INLINE u32 func_0(u8 opcode){
   TYPE_0(opcode);
 }
 
@@ -121,7 +124,7 @@ static u32 func_0(u8 opcode){
 
 #define func_bdz func_F
 #define func_bdnz func_F
-#define func_bdctrl func_0
+#define func_bctrl func_0
 
 #define func_cmp func_A
 #define func_cmpi func_D
@@ -185,7 +188,7 @@ static inline void init_ops(){
 	
 	DEF_OP(BDZ, func_bdz);
 	DEF_OP(BDNZ, func_bdnz);
-	DEF_OP(BDCTRL, func_bdctrl);
+	DEF_OP(BCTRL, func_bctrl);
 	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);
@@ -251,7 +254,7 @@ u8 name_to_instr(const char* __restrict__ memonic){
 
 
 //Add opcode to bin and then move the cursor to the next location
-static inline char* push32(char* __restrict__ buff, u32 opdat){
+static INLINE char* push32(char* __restrict__ buff, u32 opdat){
   *((u32*)buff) = opdat;
   buff += sizeof(u32);
   return buff;
@@ -464,7 +467,7 @@ static void remove_register_indicators(cstr str){
 
 
 //Checks the string for any non number characters
-static bool isBadString(cstr str){
+static INLINE bool isBadString(cstr str){
 	if(!(str = strchr(str, ' ')) ) return false; //Checks for the first spacebar. If there is no spacebar it returns false
 	while(*str != 0){
 		if(*str >= 'a' && *str <= 'z') return true;
@@ -539,7 +542,7 @@ char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
 
 #define PUSH_LABEL(key, val) tmp_label = Label_construct(strdup(key), val); ret.push_back(&ret, &tmp_label)
 
-static inline vector get_predefined_labels(){
+static INLINE vector get_predefined_labels(){
   vector ret;
   vector_init(&ret, sizeof(Label), free_label);
   Label tmp_label;
@@ -644,7 +647,7 @@ fu_BinFile assemble_s(fu_TextFile assembly){
   return ret;
 }
 
-fu_BinFile assemble(char* __restrict__ file_path){
+fu_BinFile INLINE assemble(char* __restrict__ file_path){
   fu_BinFile ret;
   fu_TextFile input = fu_load_text_file(file_path);
   ret = assemble_s(input);

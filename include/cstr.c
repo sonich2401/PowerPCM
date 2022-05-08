@@ -1,4 +1,5 @@
 #include "cstr.h"
+#include "types.h"
 #include <stdio.h>
 #ifndef CSTR_NO_STRING_H
 
@@ -9,14 +10,14 @@
 #include <stdlib.h>
 
 #else
-void abort(){
+void INLINE abort(){
 	puts("FATAL ERR");
 	while(1){}
 }
 #endif
 
 
-cstr cstrshl(cstr CSTR_RESTRICT string, size_t amount){
+INLINE cstr cstrshl(cstr CSTR_RESTRICT string, size_t amount){
     size_t string_strlen = strlen(string);
     for(size_t i = 0; i < string_strlen - (amount - 1); i++){
         *(string + i) = *(string + i + amount);
@@ -24,7 +25,7 @@ cstr cstrshl(cstr CSTR_RESTRICT string, size_t amount){
     return string;
 }
 
-cstr cstrshr(cstr CSTR_RESTRICT string, size_t amount){
+INLINE cstr cstrshr(cstr CSTR_RESTRICT string, size_t amount){
     size_t string_strlen = strlen(string);
     for(size_t i = string_strlen - (amount - 1); i > 0; i--){
         *(string + i) = *(string + i - amount);
@@ -32,7 +33,7 @@ cstr cstrshr(cstr CSTR_RESTRICT string, size_t amount){
     return string;
 }
 
-cstr cstrrm(char* string, char* CSTR_RESTRICT search){
+INLINE cstr cstrrm(char* string, char* CSTR_RESTRICT search){
     char* ret = string;
     char* old_string = string;
     while((string = strstr(string, search)) != NULL && string != old_string){
@@ -94,7 +95,7 @@ cstr cstrrep(cstr string, cstr __restrict__ search, cstr __restrict__ replacemen
     return ret;
 }
 
-size_t cstrcnt(cstr __restrict__ string, cstr  __restrict__ search){
+INLINE size_t cstrcnt(cstr __restrict__ string, cstr  __restrict__ search){
     size_t ret = 0;
     cstr string_old = string;
     while((string = strstr(string, search)) != NULL && string != string_old){
@@ -104,7 +105,7 @@ size_t cstrcnt(cstr __restrict__ string, cstr  __restrict__ search){
     return ret;
 }
 
-cstr cstrcat(cstr str1, cstr CSTR_RESTRICT str2){
+INLINE cstr cstrcat(cstr str1, cstr CSTR_RESTRICT str2){
 	unsigned long size = sizeof(char) * (strlen(str1) + strlen(str2) + 1);
 	str1 = (cstr)realloc(str1, size);
 	#ifdef CSTR_DEBUG
@@ -117,7 +118,7 @@ cstr cstrcat(cstr str1, cstr CSTR_RESTRICT str2){
 	return str1;
 }
 
-cstr cstrcatc(cstr str1, char ch){
+INLINE cstr cstrcatc(cstr str1, char ch){
 	unsigned long str1_size = strlen(str1);
 	unsigned long size = sizeof(char) * (str1_size + 1 + 1);
 	str1 = (cstr)realloc(str1, size);
@@ -152,9 +153,9 @@ cstr cstrdel(cstr str, unsigned int start, unsigned int end){
 			abort();
 		}
 	#endif
-	
+
+	unsigned long ret_i = 0;
 	#ifdef CSTR_COPY	
-		unsigned long ret_i = 0;
 		for(unsigned long i = 0; i < str_size; i++){
 			if(i >= start && i < end) continue;
 			ret[ret_i] = str[i];
@@ -200,7 +201,7 @@ cstr* cstrsplit(cstr CSTR_RESTRICT str, cstr CSTR_RESTRICT find){
 
 
 
-cstr cstrsubs(cstr CSTR_RESTRICT str, unsigned int start, unsigned int end){
+INLINE cstr cstrsubs(cstr CSTR_RESTRICT str, unsigned int start, unsigned int end){
 	//unsigned long str_size = strlen(str);
 	unsigned long size = sizeof(char) * (end - start) + 1;
 	cstr ret = (cstr)malloc(size);
@@ -215,14 +216,14 @@ cstr cstrsubs(cstr CSTR_RESTRICT str, unsigned int start, unsigned int end){
 	return ret;
 }
 
-cstr* cstrsplitc(cstr CSTR_RESTRICT str, char find){
+INLINE cstr* cstrsplitc(cstr CSTR_RESTRICT str, char find){
 	char tmpstr[2];
 	tmpstr[0] = find;
 	tmpstr[1] = 0;
 	return cstrsplit(str, tmpstr);
 }
 
-cstr cstrrem(cstr CSTR_RESTRICT str, char find){
+INLINE cstr cstrrem(cstr CSTR_RESTRICT str, char find){
 	char* cursor = strrchr(str, find);
 	
 	while(cursor != NULL){

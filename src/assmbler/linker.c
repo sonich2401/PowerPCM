@@ -5,23 +5,23 @@
 #include <malloc.h>
 #include <string.h>
 
-inline char str_is_label(cstr __restrict__ str){
-    return (strstr(str, ":") != NULL && strstr(str, "\"") ==NULL);
+INLINE char str_is_label(cstr __restrict__ str){
+  return (strstr(str, ":") != NULL && strstr(str, "\"") ==NULL);
 }
 
-inline Label Label_construct(char* __restrict__ str, u64 ptr){
+Label INLINE Label_construct(char* __restrict__ str, u64 ptr){
     Label ret;
     ret.ptr = ptr;
     ret.str = str;
     return ret;
 }
 
-inline void free_label(Label* __restrict__ lab){
+INLINE void free_label(Label* __restrict__ lab){
   free(lab->str);
 }
 
 
-inline fu_BinFile link_asm(fu_List file_list){
+INLINE fu_BinFile link_asm(fu_List file_list){
   fu_BinFile ret;
   
   fu_TextFile root = fu_load_text_file(file_list.text[0]);

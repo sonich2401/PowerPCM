@@ -9,7 +9,7 @@
 .macro struct_vector_buffer: 8
 .macro struct_vector_type: 12
 .macro struct_vector_decon: 16
-.macro sizeof_vector: 20
+.macro sizeof_vector: 21
 
 vector_alloc:
        subi r0, r0, 8
@@ -124,12 +124,16 @@ vector_push_back:
        mr r4, r14
        
        ; Prepare memcpy
-       lw r4, struct_vector_size(r3) ; elemetns
-       bl vector_index
+       lw r3, struct_vector_type(r15)
+       lw r4, struct_vector_size(r15) ; elemetns
+       mul r4, r4, r3
+       lw r3, struct_vector_dat(r15)
+       add r3, r4, r3
        
        
        lw r5, 12(r15) ; type_size
        mr r4, r14 ; void* data pointer
+       mr r3, r15
        bl memcpy
 
        ; Get vec* again
@@ -145,6 +149,29 @@ vector_push_back:
        lw r14, 0(r0)
        lw r15, 8(r0)
        addi r0, r0, 12
+       blr
+       
+vector_push_back_register:
+       subi r0, r0, 8
+       sw r14, 0(r0)
+       mflr r14
+       sw r14, 4(r0)
+       
+       lw r14, struct_vector_type(r3) ;;Get the size
+       ; Temporarily allocate a block of memory to store the contents of the register into the vector
+       sub r0, r0, r14
+       sw r4, 0(r0)
+       mr r4, r0
+       
+       bl vector_push_back
+       
+       lw r14, struct_vector_type(r3)
+       add r0, r0, r14  ; Dealloc memory
+       
+       lw r14, 4(r0)
+       mtlr r14
+       lw r14, 0(r0)
+       addi r0, r0, 8
        blr
        
 vector_index:
@@ -203,7 +230,7 @@ vector_deconstruct:
        
        lw r14, struct_vector_decon(r3)   ; Get vector deconstruct 
        cmpi r14, NULL
-       beq __vector__deconstruct__cleanup:
+       beq __vector__deconstruct__cleanup
        
        ;Valid deconstruct funciton was found
        mtctr r14
@@ -228,7 +255,7 @@ vector_deconstruct:
        bl free
        
        lw r14, 4(r0)
-       mflr r14
+       mtlr r14
        lw r14, 0(r0)
        lw r15, 8(r0)
        lw r16, 12(r0)

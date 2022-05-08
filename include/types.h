@@ -32,6 +32,7 @@ typedef u64 dword;
 //#define LOG
 #define LOG_LEN 34
 
+#define INLINE inline __attribute__((always_inline))
 
 //I thought you needed to convert a u32 to a s32 for negitive number addition 
 //but I forgot that -1 = 0xFFFF so it doesn't matter the type of the varible.

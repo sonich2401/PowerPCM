@@ -1,10 +1,11 @@
 #include "../opcode.h"
 #include "FileUtils.h"
+#include "types.h"
 
 #include <malloc.h>
 
 
-static u32 get_add(u8 dest, u8 src, u8 src2){
+static INLINE u32 get_add(u8 dest, u8 src, u8 src2){
   u32 ret = 0;
   ret = SET_OP(ret, ADD);
   ret = SET_REG(ret, 1, dest);
@@ -14,7 +15,7 @@ static u32 get_add(u8 dest, u8 src, u8 src2){
   return ret;
 }
 
-static u32 get_li(u8 dest, u32 imm){
+static INLINE u32 get_li(u8 dest, u32 imm){
   u32 ret = 0;
   ret = SET_OP(ret, LI);
   ret = SET_REG(ret, 1, dest);
@@ -22,7 +23,7 @@ static u32 get_li(u8 dest, u32 imm){
   return ret;
 }
 
-static u32 get_addi(u8 dest, u8 a, u32 val){
+static INLINE u32 get_addi(u8 dest, u8 a, u32 val){
   u32 ret = 0;
   
   ret = SET_OP(ret, ADDI);
@@ -33,7 +34,7 @@ static u32 get_addi(u8 dest, u8 a, u32 val){
   return ret;
 }
 
-static u32 get_subi(u8 dest, u8 a, u32 val){
+static INLINE u32 get_subi(u8 dest, u8 a, u32 val){
   u32 ret = 0;
   
   ret = SET_OP(ret, SUBI);
@@ -44,7 +45,7 @@ static u32 get_subi(u8 dest, u8 a, u32 val){
   return ret;
 }
 
-static u32 get_sub(u8 dest, u8 a, u8 b){
+static INLINE u32 get_sub(u8 dest, u8 a, u8 b){
   u32 ret = 0;
   
   ret = SET_OP(ret, SUB);
@@ -55,7 +56,7 @@ static u32 get_sub(u8 dest, u8 a, u8 b){
   return ret;
 }
 
-static u32 get_sw(u8 dest, u32 offset, u8 a){
+static INLINE u32 get_sw(u8 dest, u32 offset, u8 a){
   u32 ret = 0;
   
   ret = SET_OP(ret, SW);
@@ -66,7 +67,7 @@ static u32 get_sw(u8 dest, u32 offset, u8 a){
   return ret;
 }
 
-static u32 get_cmpi(u8 dest, u32 val){
+static INLINE u32 get_cmpi(u8 dest, u32 val){
   u32 ret = 0;
   
   ret = SET_OP(ret, CMPI);
@@ -76,7 +77,7 @@ static u32 get_cmpi(u8 dest, u32 val){
   return ret;
 }
 
-static u32 get_bne(u8 dest, u32 val){
+static INLINE u32 get_bne(u8 dest, u32 val){
   u32 ret = 0;
   
   ret = SET_OP(ret, BNE);
@@ -85,7 +86,7 @@ static u32 get_bne(u8 dest, u32 val){
   return ret;
 }
 
-static u32 get_mr(u8 dest, u8 a){
+static INLINE u32 get_mr(u8 dest, u8 a){
   u32 ret = 0;
   
   ret = SET_OP(ret, MR);
@@ -95,12 +96,12 @@ static u32 get_mr(u8 dest, u8 a){
   return ret;
 }
 
-static u32 get_blr(){
+static INLINE u32 get_blr(){
   u32 ret = 0;
   return SET_OP(ret, BLR);
 }
 
-static u32 get_bl(u32 val){
+static INLINE u32 get_bl(u32 val){
   u32 ret = 0;
   ret = SET_OP(ret, BL);
   ret = SET_IMM_IMP(ret, val);
@@ -108,7 +109,7 @@ static u32 get_bl(u32 val){
   return ret;
 }
 
-static u32 get_lw(u8 dest, u32 offset, u8 a){
+static INLINE u32 get_lw(u8 dest, u32 offset, u8 a){
   u32 ret = 0;
   
   ret = SET_OP(ret, LW);
@@ -142,7 +143,7 @@ int fib(register int max){
 */
 
 
-static inline char* push32(char* __restrict__ buff, u32 opdat){
+static INLINE char* push32(char* __restrict__ buff, u32 opdat){
   *((u32*)buff) = opdat;
   buff += sizeof(u32);
   return buff;
@@ -194,6 +195,3 @@ fu_BinFile get_program(){
   ret.size = 1000;
   return ret;
 }
-
-
-

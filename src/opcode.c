@@ -69,8 +69,8 @@ const char* opcode_str[OPCODE_LEN] = {
 #include <stdlib.h>
 
 
-char* push_string(){
-	char* ret = (char*)malloc(1500);
+static char* push_string(){
+	char* ret = (char*)malloc(40);
 
 	if(execution_log.text[execution_log.size - 1] != NULL){
 		free(execution_log.text[execution_log.size - 1]);
@@ -90,26 +90,22 @@ extern char logging;
 #include <stdlib.h>
 #include <string.h>
 //#ifdef LOG
+#if 1
 	#if 0
 		#define dbg_printf(...) printf(__VA_ARGS__)
 	#else
 		#define dbg_printf(...) if(logging){char* ___tmp___ = push_string();\
-		sprintf(___tmp___, __VA_ARGS__); \
-		___tmp___= strrchr(___tmp___, '\n');\
-		if(___tmp___ != NULL){ \
-			*___tmp___ = 0;\
-		}}\
-		//printf(__VA_ARGS__);
+		___tmp___[sprintf(___tmp___, __VA_ARGS__) - 1] = 0; }
 		
 	#endif
-//#else
-//	#if 1
-//		char do_nothing[1000];
-//		#define dbg_printf(...) sprintf(do_nothing, __VA_ARGS__)
-//	#else
-//		#define dbg_printf(...) printf(__VA_ARGS__)
-//	#endif
-//#endif
+#else
+	#if 0
+		char do_nothing[1000];
+		#define dbg_printf(...) sprintf(do_nothing, __VA_ARGS__)
+	#else
+		#define dbg_printf(...)
+	#endif
+#endif
 
 
 typedef unsigned long long arg_t;
@@ -148,21 +144,19 @@ dbg_printf("%s R%u\n", opcode_str[GET_OP(opdat)], dest);
 u32 imm = GET_IMM_IMP(opdat); \
 dbg_printf("%s %u\n", opcode_str[GET_OP(opdat)], imm);
 
-void func_nop(){
-  puts("NOP");
-  return;
+static void func_nop(){
 }
 
 
 //MULTIPLY FUNCTIONS
 #define mul_template(dest, a, b) (cpu.r[dest] = cpu.r[a] * b)
 
-void func_mul(u32 opdat){
+static void func_mul(u32 opdat){
   TYPE_A
   mul_template(dest, a, cpu.r[b]);
 }
 
-void func_muli(u32 opdat){
+static void func_muli(u32 opdat){
   TYPE_B
   mul_template(dest, a, b);
 }
@@ -170,12 +164,12 @@ void func_muli(u32 opdat){
 //DIVIDE FUNCTION
 #define div_template(dest, a, b) (cpu.r[dest] = cpu.r[a] / b)
 
-void func_div(u32 opdat){
+static void func_div(u32 opdat){
   TYPE_A
   div_template(dest, a, cpu.r[b]);
 }
 
-void func_divi(u32 opdat){
+static void func_divi(u32 opdat){
   TYPE_B
   div_template(dest, a, b);
 }
@@ -184,12 +178,12 @@ void func_divi(u32 opdat){
 //ADD FUNCTIONS
 #define add_template(dest, a, b) (cpu.r[dest] = cpu.r[a] + b)
 
-void func_add_reg(u32 opdat){
+static void func_add_reg(u32 opdat){
   TYPE_A
   add_template(dest, a, cpu.r[b]);
 }
 
-void func_add_imm(u32 opdat){
+static void func_add_imm(u32 opdat){
   TYPE_B
   add_template(dest, a, b);
 }
@@ -197,12 +191,12 @@ void func_add_imm(u32 opdat){
 //Subtract functions
 #define sub_template(dest, a, b) (cpu.r[dest] = cpu.r[a] - b)
 
-void func_sub(u32 opdat){
+static void func_sub(u32 opdat){
 	TYPE_A
 	sub_template(dest, a, cpu.ru[b]);
 }
 
-void func_subi(u32 opdat){
+static void func_subi(u32 opdat){
 	TYPE_B
 	sub_template(dest, a, b);
 }
@@ -211,38 +205,38 @@ void func_subi(u32 opdat){
 
 //LOAD FUNCTIONS
 
-void func_li(u32 opdat){
+static void func_li(u32 opdat){
   TYPE_D
   cpu.ru[dest] = imm;
 }
 
-void func_load_byte(u32 opdat){
+static void func_load_byte(u32 opdat){
   TYPE_C
   cpu.ru[dest] = read8(cpu.ru[a] + CONV_S32(offset));
 }
 
-void func_load_halfword(u32 opdat){
+static void func_load_halfword(u32 opdat){
   TYPE_C
   cpu.ru[dest] = read16(cpu.ru[a] + CONV_S32(offset));
 }
 
-void func_load_word(u32 opdat){
+static void func_load_word(u32 opdat){
   TYPE_C
   cpu.ru[dest] = read32(cpu.ru[a] + CONV_S32(offset));
 }
 
 //STORE FUNCTIONS
-void func_sb(u32 opdat){
+static void func_sb(u32 opdat){
   TYPE_C
   write8(cpu.ru[a] + CONV_S32(offset), cpu.ru[dest] & 0xFF);
 }
 
-void func_shw(u32 opdat){
+static void func_shw(u32 opdat){
   TYPE_C
   write16( cpu.ru[a] + CONV_S32(offset), cpu.ru[dest] & 0xFFFF);
 }
 
-void func_sw(u32 opdat){
+static void func_sw(u32 opdat){
   TYPE_C
   write32( cpu.ru[a] + CONV_S32(offset), cpu.ru[dest]);
 }
@@ -251,7 +245,7 @@ void func_sw(u32 opdat){
 
 //COMPARE FUNCTIONS
 
-static inline void cmp_template(u32 val_a, u32 val_b){
+static INLINE void cmp_template(u32 val_a, u32 val_b){
 	//printf("%u, %u\n", val_a, val_b);
 	//getc(stdin);
 	cpu.cr.E = (val_a == val_b);
@@ -354,7 +348,7 @@ static void func_blr(u32 opdat){
 
 
 //SHIFT FUNCTIONS
-static inline void shift_left_template(u8 dest, u8 a, u32 b){
+static INLINE void shift_left_template(u8 dest, u8 a, u32 b){
 	cpu.ru[dest] = cpu.ru[a] << b;
 }
 
@@ -368,7 +362,7 @@ static void func_sli(u32 opdat){
 	shift_left_template(dest, a, b);
 }
 
-static inline void shift_right_template(u8 dest, u8 a, u32 b){
+static INLINE void shift_right_template(u8 dest, u8 a, u32 b){
 	cpu.ru[dest] = cpu.ru[a] >> b;
 }
 
@@ -384,7 +378,7 @@ static void func_sri(u32 opdat){
 
 
 //BITWISE LOGIC
-static inline void and_template(u8 dest, u8 a, u32 b){
+static INLINE void and_template(u8 dest, u8 a, u32 b){
 	cpu.ru[dest] = cpu.ru[a] & b;
 }
 
@@ -398,7 +392,7 @@ static void func_andi(u32 opdat){
 	and_template(dest, a, b);
 }
 
-static inline void or_template(u8 dest, u8 a, u32 b){
+static INLINE void or_template(u8 dest, u8 a, u32 b){
 	cpu.ru[dest] = cpu.ru[a] | b;
 }
 
@@ -412,7 +406,7 @@ static void func_ori(u32 opdat){
 	or_template(dest, a, b);
 }
 
-static inline void xor_template(u8 dest, u8 a, u32 b){
+static INLINE void xor_template(u8 dest, u8 a, u32 b){
 	cpu.ru[dest] = cpu.ru[a] ^ b;
 }
 
@@ -499,7 +493,7 @@ microcode_t opcode_ptr[OPCODE_LEN];
 
 
 #include <string.h>
-microcode_t decode_opcode_name(const char* restrict name){
+microcode_t INLINE decode_opcode_name(const char* restrict name){
   for(unsigned char i = 0; i < OPCODE_LEN; i++){
     if(strcmp(name, opcode_str[i]) == 0){
       return opcode_ptr[i];
@@ -511,12 +505,12 @@ microcode_t decode_opcode_name(const char* restrict name){
 
 
 
-inline char* opcode_to_name(unsigned char opcode){
+INLINE char* opcode_to_name(unsigned char opcode){
  return strdup(opcode_str[opcode]);
 }
 
 
-inline microcode_t decode_bin(const char* bytes){
+INLINE microcode_t decode_bin(const char* bytes){
        unsigned char opcode = GET_OP((*(unsigned char*)bytes));
 	//if(OPCODE_LEN <= opcode){
   //            puts("WARNING: Invalid opcode!");
@@ -583,7 +577,7 @@ void init_opcodes(){
 	
 	DEF_OP(BDZ, func_bdz);
 	DEF_OP(BDNZ, func_bdnz);
-	DEF_OP(BDCTRL, func_bdctrl);
+	DEF_OP(BCTRL, func_bdctrl);
 	
 	DEF_OP(SR, func_sr);
 	DEF_OP(SRI, func_sri);
