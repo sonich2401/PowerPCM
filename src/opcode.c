@@ -50,7 +50,7 @@ const char* opcode_str[OPCODE_LEN] = {
 	
 	"BDNZ",
 	"BDZ",
-	"BDCTRL",
+	"BCTRL",
 	
 	"CMP",
 	"CMPI",

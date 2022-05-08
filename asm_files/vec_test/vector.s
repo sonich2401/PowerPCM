@@ -170,10 +170,18 @@ vector_pop_back:
        sw r14, struct_vector_size(r3)
        
        lw r14, struct_vector_decon(r3)  ;;Get decon
-       cmpi r14, 0
+       cmpi r14, NULL
        beq __vector__pop__back__decon_null
        
-       ;TODO: Impliment ctr register
+       ; Call deconstructor
+       mtctr r14
+       lw r14, struct_vector_dat(r3)
+       lw r3, struct_vector_size(r3)
+       muli r3, r3, sizeof_vector
+       add r3, r3, r14
+       
+       ; r3 now holds the pointer 
+       bctrl
        
        __vector__pop__back__decon_null:
        ; total_elements--;
@@ -184,42 +192,39 @@ vector_pop_back:
        blr
 
 vector_deconstruct:
-       blr
-       subi r0, r0, 20
+       subi sp, sp, 16
        sw r14, 0(r0)
        mflr r14
        sw r14, 4(r0)
        sw r15, 8(r0)
        sw r16, 12(r0)
-       sw r17, 16(r0)
        ; Backup vec* dat
        mr r16, r3
        
-       lw r17, struct_vector_decon(r3)   ; Get vector deconstruct 
-       cmpi r17, 0
+       lw r14, struct_vector_decon(r3)   ; Get vector deconstruct 
+       cmpi r14, NULL
        beq __vector__deconstruct__cleanup:
        
+       ;Valid deconstruct funciton was found
+       mtctr r14
 
        lw r15, struct_vector_size(r3)       ; Get size
-       li r14, 0             ; Init counter
+       lw r14, struct_vector_dat(r3)        ; Get ptr
        
        __vector__deconstruct__loop:
-              cmp r14, r15
-              bge __vector__deconstruct__cleanup
+              cmpi r15, 0
+              ble __vector__deconstruct__cleanup
               
+              mr r3, r14
+              bctrl   ; ctr holds the deconstructor
               
-              mr r3, r16
-              mr r4, 14
-              bl vector_index
-              ;TODO: Impliment CTR regieter
-              
-              addi r14, r14 1
+              subi r15, r15, 1
+              addi r14, 14, sizeof_vector
               b __vector__deconstruct__loop
        
        __vector__deconstruct__cleanup:
        ;free(vec->dat);
-       mr r3, r16
-       lw r3, struct_vector_dat(r3)
+       lw r3, struct_vector_dat(r16)
        bl free
        
        lw r14, 4(r0)
@@ -227,8 +232,7 @@ vector_deconstruct:
        lw r14, 0(r0)
        lw r15, 8(r0)
        lw r16, 12(r0)
-       lw r17, 16(r0)
-       addi r0, r0, 20
+       addi sp, sp, 16
        blr
        
 vector_size:

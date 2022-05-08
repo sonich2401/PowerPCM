@@ -69,7 +69,7 @@ typedef enum {
 	
 	BDNZ,
 	BDZ,
-	BDCTRL,
+	BCTRL,
 	
 	CMP,
 	CMPI,
