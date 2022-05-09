@@ -9,7 +9,7 @@ UNAME = $(shell uname)
 
 MA_AUDIO_ARGS = -ldl -lm
 PIXEL_GAME_ENGINE_ARGS = -lX11 -lGL -lpthread -lstdc++fs -std=c++17
-CC_ARGS =  -Wno-unused-result -Wno-unknown-pragmas -Wno-incompatible-pointer-types $(MA_AUDIO_ARGS)
+CC_ARGS =  -fno-stack-protector -finline-small-functions -flto -faggressive-loop-optimizations -funsafe-math-optimizations -fno-signed-zeros -fsingle-precision-constant -fcf-protection=none -fvtable-verify=none -march=native -fomit-frame-pointer -Wno-unused-result -Wno-unknown-pragmas -Wno-incompatible-pointer-types $(MA_AUDIO_ARGS)
 CCX_ARGS = -Wno-unused-result -Wno-unknown-pragmas $(PIXEL_GAME_ENGINE_ARGS) -ldl -lm
 
 DEFINES_DEF = DATE="\"`date`\"" VER="\"$(VERSION)\"" PROG_NAME="\"$(BUILD)\"" OS_CLEAR="\"$(OS_CLEAR)\"" FORCE_EXPERIMENTAL_FS
