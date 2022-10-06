@@ -17,13 +17,6 @@ INLINE void vector_init(vector* __restrict__ vec, unsigned short type_size, void
 
     vec->buffer_health = 30;
     vec->dat = malloc(30 * type_size); //Reserve 30 slots for the vector
-
-    //Add function pointers to struct
-    vec->size = vector_size;
-    vec->index = vector_index;
-    vec->push_back = vector_push_back;
-    vec->pop_back = vector_pop_back;
-    vec->replace = vector_replace;
 }
 
 
@@ -56,7 +49,7 @@ INLINE void vector_push_back(vector* vec, void* __restrict__ data){
 //pop a block of data off of the end of the vector
 INLINE void vector_pop_back(vector* __restrict__ vec){
     if(vec->child_deconstruct != NULL)
-        vec->child_deconstruct(vec->index(vec, vec->total_data - 1));
+        vec->child_deconstruct(vector_index(vec, vec->total_data - 1));
     vec->total_data--;
 }
 
@@ -87,4 +80,20 @@ INLINE void vector_deconstruct(vector* __restrict__ vec){
     }
     free(vec->dat);
     //free(vec);
+}
+
+void vector_merge(vector * vec, vector * source){
+    if(vec->type_size != source->type_size) abort();
+
+    if(vec->buffer_health - vec->total_data >= source->total_data){
+        memcpy(vec->dat + (vec->total_data * vec->type_size), source->dat, source->total_data * vec->type_size);
+    }else{
+        vec->dat = (void*)realloc(vec->dat, (vec->total_data + source->total_data) * vec->total_data);
+        #ifdef DEBUG
+            if(vec->dat == NULL){
+                fprintf(stderr, "ERR: Out of memory!!\n");
+                exit(EXIT_FAILURE);
+            }
+        #endif
+    }
 }

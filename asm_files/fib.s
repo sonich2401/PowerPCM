@@ -1,3 +1,4 @@
+.global start:
 li 3, 20
 bl 16
 end 0

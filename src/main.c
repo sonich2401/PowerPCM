@@ -55,6 +55,10 @@ int main(int argc, char* argv[]){
       exit(-1);
     }else{
       rom = link_asm(files_to_assemble);
+      if(rom.bin == NULL || rom.size == 0){
+        fprintf(stderr, "ERR: There was no lines of code to assemble!\n");
+        exit(EXIT_FAILURE);
+      }
     }
     
   }else{

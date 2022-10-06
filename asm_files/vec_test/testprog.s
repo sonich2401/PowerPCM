@@ -5,7 +5,7 @@
 
 .macro sizeof_int: 4
 
-main:
+.global main:
 
        ; Allocate some memory
        li r3, sizeof_int

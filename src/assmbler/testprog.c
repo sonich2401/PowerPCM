@@ -149,7 +149,7 @@ static INLINE char* push32(char* __restrict__ buff, u32 opdat){
   return buff;
 }
 
-u32 pc = 0;
+#include "linker.h" //Used for getting access to 'pc'
 #define PUSH32(dat) cursor = push32(cursor, dat); pc+=4
 
 fu_BinFile get_program(){

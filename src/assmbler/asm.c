@@ -296,34 +296,38 @@ static void decode_backslashes(cstr str){
 
 
 
-//Possible future use for a proper linker?
-typedef struct{
-  vector labels;
-  Asm_file_t asm_global;
-}Intermediate_Asm_File_t;
 
-static u64 pc; //Used to find where to place the data
+//static u64 pc; //Used to find where to place the data
 extern char logging;
 
-static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__ predefined){
+static Asm_file_t get_labels(fu_TextFile* txt, vector* __restrict__ predefined){
   pc = 4; //For some reason it needs to be 8 instead of 4?
   u64 start_pc = 0;//Set the rom start address to 0. If this stays zero after all labels are decoded then 'start' was never defined
-  vector labels;
-  vector globals = vector_create(sizeof(Label), free_label);
+  vector labels = vector_create(sizeof(Label), free_label);
+  vector globals;
   
   //Add the predefined labels
   if(predefined){
-    labels = *predefined;
+    globals = *predefined;
   }else{
-    labels = vector_create(sizeof(Label), free_label);
+    globals = vector_create(sizeof(Label), free_label);
   }
   
-  Intermediate_Asm_File_t ret;
-  ret.asm_global.bin = fu_alloc_bin_file(sizeof(u32));
+  Asm_file_t ret;
+  ret.bin = fu_alloc_bin_file(sizeof(u32));
   
   for(u64 i = 0; i < txt->size; i++){
     char* cursor = strchr(txt->text[i], ':');
     if(!cursor) continue;
+    size_t cursor_len = strlen(cursor);
+
+    bool isGlobalLabel = false;
+    //Check if a global label and then 
+    if(strstr(txt->text[i], ".global") == txt->text[i] && cursor_len > 2){
+      isGlobalLabel = true;
+      cstrshl(txt->text[i], strlen(".global") + 1);
+    }
+
     if(cstrcnt(txt->text[i], "\"") == 2){
       //Remove quotes and copy binary data
       fu_BinFile dat_seg;
@@ -334,13 +338,20 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
       decode_backslashes(dat_seg.bin);
       //Copy into executable binary
       dat_seg.size = strlen(dat_seg.bin) + 1;
-      fu_join_bin(&ret.asm_global.bin, dat_seg);
+      fu_join_bin(&ret.bin, dat_seg);
 
       
       //Add label
       Label tmp = Label_construct(strdup(txt->text[i]), pc + ROM_START); //Add +ROM_START because DMA is not relitive to cpu.pc
       *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
-      labels.push_back(&labels, &tmp);
+
+      //Check to see what bank to insert it into
+      if(isGlobalLabel){
+        vector_push_back(&globals, &tmp);
+      } else {
+        vector_push_back(&labels, &tmp);
+      }
+
       pc += dat_seg.size;
       fu_delete_text(txt, i); //Remove line that contained the label
       i--;
@@ -349,8 +360,7 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
       continue;
     }
   
-    //.macro testMacro: 20
-    if(strlen(cursor) > 2 && strstr(txt->text[i], ".macro ") == txt->text[i]){  //Number is after the label
+    if(cursor_len > 2 && strstr(txt->text[i], ".macro ") == txt->text[i]){  //Number is after the label
 
       unsigned int tmpint = 0;
       sscanf(cursor + 1, "%u", &tmpint);
@@ -358,15 +368,22 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
       //Add label
       Label tmp = Label_construct(strdup(strchr(txt->text[i], ' ') + 1), tmpint);
       *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
-      labels.push_back(&labels, &tmp);
+
+      //Check to see what bank to insert it into
+      if(isGlobalLabel){
+        vector_push_back(&globals, &tmp);
+      } else {
+        vector_push_back(&labels, &tmp);
+      }
+
       fu_delete_text(txt, i); //Remove line that contained the label
       i--;
       
       continue;
     }
     
-    //testInt: 210
-    if(strlen(cursor) > 2){  //Number is after the label
+    //Create .bss integer memory
+    if(cursor_len > 2){  //Number is after the label
       
       fu_BinFile dat_seg;
       dat_seg.bin = (char*)malloc(sizeof(unsigned int));
@@ -374,13 +391,20 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
       
       //Copy into executable binary
       dat_seg.size = sizeof(unsigned int);
-      fu_join_bin(&ret.asm_global.bin, dat_seg);
+      fu_join_bin(&ret.bin, dat_seg);
 
       
       //Add label
       Label tmp = Label_construct(strdup(txt->text[i]), pc + ROM_START); //Add +ROM_START because DMA is not relitive to cpu.pc
       *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
-      labels.push_back(&labels, &tmp);
+      
+      //Check to see what bank to insert it into
+      if(isGlobalLabel){
+        vector_push_back(&globals, &tmp);
+      } else {
+        vector_push_back(&labels, &tmp);
+      }
+
       pc += dat_seg.size;
       fu_delete_text(txt, i); //Remove line that contained the label
       i--;
@@ -396,12 +420,24 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
   for(u64 i = 0; i < txt->size; i++){
     pc = i * 4 + data_size;
     if(strstr(txt->text[i], ":") != NULL){
+      bool isGlobalLabel = false;
+      //Check if a global label and then 
+      if(strstr(txt->text[i], ".global") == txt->text[i]){
+       isGlobalLabel = true;
+       cstrshl(txt->text[i], strlen(".global") + 1);
+      }
+
       Label tmp = Label_construct(strdup(txt->text[i]), pc);
       tmp.str[strlen(tmp.str) - 1] =0;
       if(logging){
         printf("LABEL: \"%s\": %llX\n", tmp.str, tmp.ptr);
       }
-      labels.push_back(&labels, &tmp);
+      //Check to see what bank to insert it into
+      if(isGlobalLabel){
+        vector_push_back(&globals, &tmp);
+      } else {
+        vector_push_back(&labels, &tmp);
+      }
       //printf("LBL \"%s\" at %llu\n", tmp.str, pc);
       if(strcmp(tmp.str, "start") == 0){
         start_pc = pc;
@@ -429,11 +465,11 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
     fprintf(stderr, "ASM ERR: 'start' label was not found!\n");
     abort();
   }else{
-    *((u32*)ret.asm_global.bin.bin)  = ((u32)(start_pc)); //Set start rom address
+    *((u32*)ret.bin.bin)  = ((u32)(start_pc)); //Set start rom address
   }
 
   ret.labels = labels;
-  ret.asm_global.globals = globals;
+  ret.globals = globals;
   return ret;
 }
 
@@ -511,71 +547,50 @@ static void clean_text(fu_TextFile* t){
   }
 }
 
-char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
-  #define labels asm_f.labels
-  //replace label with memory address
-  for (u64 i1 = 0; i1 < labels.size(&labels); i1++) {
-    Label* ele1 = (Label*)labels.index(&labels, i1);
-    char* cache = strstr(ele, ele1->str);
-    if (cache != NULL && *(cache - 1) == ' ') {
-      char* tmp_string = cstrdup_stack(cache);
-      
-      char* helper;
-      if ((helper = strchr(tmp_string, ' '))) {
-        *helper = 0;
-      }
+static void replace_label(cstr* ele, Label* lbl){
+  char* tmp_string = cstrdup_stack(*ele);
+        
+  char* helper;
+  if ((helper = strchr(tmp_string, ' '))) {
+    *helper = 0;
+  }
+  if (strcmp(tmp_string, lbl->str) != 0) {
+    return;
+  }
+  
+  char num_buffer[50];
+  sprintf(num_buffer, "%llu", lbl->ptr);
+  *ele = cstrrep(*ele, lbl->str, num_buffer);
+}
 
-      if (strcmp(tmp_string, ele1->str) != 0) {
-        continue;
+static char* check_and_replace_label(cstr ele, Asm_file_t* __restrict__ asm_f) {
+  #define labels asm_f->labels
+  #define globals asm_f->globals
+
+  vector* label_groups[2] = {&labels, &globals};
+
+  //replace label with memory address
+  for(u32 bank = 0; bank < 2; bank++) {
+    for (u64 i1 = 0; i1 < vector_size(label_groups[bank]); i1++) {
+      Label* ele1 = (Label*)vector_index(label_groups[bank], i1);
+      char* cache = strstr(ele, ele1->str);
+      if (cache != NULL && *(cache - 1) == ' ') {
+        replace_label(&ele, ele1);
+        return ele;
       }
-      
-      char num_buffer[50];
-      sprintf(num_buffer, "%llu", ele1->ptr);
-      ele = cstrrep(ele, ele1->str, num_buffer);
-      break;
     }
   }
+
   #undef labels
+  #undef globals
   return ele;
 }
-
-
-#define PUSH_LABEL(key, val) tmp_label = Label_construct(strdup(key), val); ret.push_back(&ret, &tmp_label)
-
-static INLINE vector get_predefined_labels(){
-  vector ret;
-  vector_init(&ret, sizeof(Label), free_label);
-  Label tmp_label;
-  
-  PUSH_LABEL("__STACK_TOP__", STACK_SIZE);
-  PUSH_LABEL("___MALLOC__BLOCK__", STACK_SIZE);
-  
-  PUSH_LABEL("true", 1);
-  PUSH_LABEL("TRUE", 1);
-  PUSH_LABEL("True", 1);
-  
-  PUSH_LABEL("false", 0);
-  PUSH_LABEL("FALSE", 0);
-  PUSH_LABEL("False", 0);
-  
-  PUSH_LABEL("NULL", 0);
-  PUSH_LABEL("null", 0);
-  PUSH_LABEL("nullptr", 0);
-  
-  //ret.push_back(&ret, &tmp_label);
-  return ret;
-}
-
-#undef PUSH_LABEL
-
-
-
 
 
 //MAIN ASSEMBLING CODE
 
 
-fu_BinFile assemble_s(fu_TextFile assembly){
+Asm_file_t assemble_obj_s(fu_TextFile assembly, vector* globals){
   if(logging){
     puts("ASSEMBLING ...");
   }
@@ -585,35 +600,40 @@ fu_BinFile assemble_s(fu_TextFile assembly){
   fu_TextFile t = fu_create_text_copy(assembly);
   clean_text(&t); //Remove all junk characters
   
-  vector predefined_labels = get_predefined_labels();
-  Intermediate_Asm_File_t tmp_asm = get_labels(&t, &predefined_labels); //resolve all labels and macros
+  Asm_file_t ret = get_labels(&t, globals); //resolve all labels and macros
   
   //Alloc only nessisary size  
-  fu_BinFile ret = fu_alloc_bin_file((tmp_asm.asm_global.bin.size + ((t.size + 2) * 4)) % ROM_SIZE);  
-  char* tmp_bin = ret.bin;
+  u64 full_rom_size = (ret.bin.size + ((t.size + 2) * 4)) % ROM_SIZE;
+  if(full_rom_size < ret.bin.size + ((t.size + 2) * 4)){
+    fprintf(stderr, "ERR: Program does not fit in the %X rom size! The size of the rom was %X.\nYou need to delete %llu instructions for it to fit into the rom.\n", ROM_SIZE, full_rom_size, (full_rom_size - ROM_SIZE) / sizeof(u32));
+    exit(EXIT_FAILURE);
+  }
+  fu_BinFile tmp_bin_file = fu_alloc_bin_file(full_rom_size);
+
+  char* tmp_bin = tmp_bin_file.bin;
   
   //Copy data segments into rom including start addr
-  memcpy(ret.bin, tmp_asm.asm_global.bin.bin, tmp_asm.asm_global.bin.size);
-  tmp_bin += tmp_asm.asm_global.bin.size;
-  u64 start_addr = tmp_asm.asm_global.bin.size;
+  memcpy(tmp_bin, ret.bin.bin, ret.bin.size);
+  tmp_bin += ret.bin.size;
+  u64 start_addr = ret.bin.size;
   
   
   for(fu_index i = 0; i < t.size; i++){
     //Replace label if it exists
-    t.text[i] = check_and_replace_label(t.text[i], tmp_asm);
+    t.text[i] = check_and_replace_label(t.text[i], &ret);
     
     //Remove register indicators (aka. r13 or $r32, or %r2)
     remove_register_indicators(strchr(t.text[i], ' '));
 
     #ifndef DISABLE_ERR_CHECKING
-    if(isBadString(t.text[i])){
+    /*if(isBadString(t.text[i])){
       fprintf(stderr, "ERR: Assembler: Line %llu of the file contains invalid characters!\nAssembly dump is as follows which shows the offending code ...\n", i);
       while((i   - 2) >= t.size){i++;}
       for(fu_index i1 = (i - 2); i1 < (i + 5); i1++){
         fprintf(stderr, "%llu: \"%s\"\n", i1, t.text[i1]);
       }
       exit(EXIT_FAILURE);
-    }
+    }*/
     #endif
 
     //Get opcode from memonic
@@ -621,8 +641,8 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     
     //remove memonic
     cstr tmp = cstrdup_stack(t.text[i]);
-    if(strchr(tmp, ' '))
-      tmp = strchr(tmp,  ' ') + 1; //Advance pointer to after the memonic and the spacebar after it
+    if(!(tmp = strchr(tmp, ' ')))
+      tmp++; //Advance pointer to after the memonic and the spacebar after it
     else
       tmp = "0";
     
@@ -633,7 +653,6 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     sscanf(tmp, "%u %u %u %u", &dest, &a, &b, &c); 
     if(logging){
       printf("pc: %llX:  %s %s\n", i * 4 + start_addr, opcode_str[opcode], tmp);
-      //printf("pc: %llX:  %s %X, %X, %X\n", i * 4 + start_addr, opcode_str[opcode], a, b, c);
     }
     //When calling the function pointer, the function being called has no clue how many arguments are being passed in.
     //All argument registers are overwritten in this function and the called function has no way of telling if there is arguments set past it's
@@ -641,16 +660,21 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     PUSH32(asm_opcode_ptr[opcode](opcode, dest, a, b, c));
   }
   
-  vector_deconstruct(&tmp_asm.labels);
-  vector_deconstruct(&tmp_asm.asm_global.globals);
   fu_free_text_file(t);
+  
+  fu_free_bin_file(ret.bin);
+  ret.bin = tmp_bin_file;
   return ret;
 }
 
-fu_BinFile INLINE assemble(char* __restrict__ file_path){
-  fu_BinFile ret;
+Asm_file_t INLINE assemble_obj(const char* __restrict__ file_path, vector* globals){
+  Asm_file_t ret;
   fu_TextFile input = fu_load_text_file(file_path);
-  ret = assemble_s(input);
+  ret = assemble_obj_s(input, globals);
   fu_free_text_file(input);
   return ret;
 }
+
+fu_BinFile assemble(const char* __restrict file_path);
+
+fu_BinFile assemble_s(fu_TextFile assembly);

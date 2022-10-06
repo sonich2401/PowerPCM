@@ -12,6 +12,7 @@
 ; malloc(unsigned int size)
 ; free(void* ptr)
 
+.global main
 
 strlen:
   subi r0, r0, 8

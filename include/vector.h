@@ -9,11 +9,6 @@ typedef struct{
     void * dat;
     unsigned short type_size;
     void (*child_deconstruct)(void *);
-    void (*push_back)(void*, void*);
-    void* (*index)(void*, unsigned long);
-    unsigned long (*size)(void*);
-    void (*pop_back)(void*);
-    void (*replace)(void*, unsigned long , void*);
 }vector;
 
 //Initalize a vector
@@ -40,5 +35,8 @@ unsigned long vector_size(vector * vec);
 
 //Cleans up self and children
 void vector_deconstruct(vector * vec);
+
+//Merges two vectors together. (does not modify source)
+void vector_merge(vector * vec, vector * source);
 
 #endif
