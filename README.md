@@ -36,7 +36,14 @@ PowerPCM -o mySourceFile.s ./asm_files/stdlib.s
 
 To get access to functions such as malloc, puts, and free, make sure to include stdlib.s in the function arguments
 
+## Windows Users
+It is possible to get PowerPCM to run on windows. This is done by using mingw and using 
+```bash
+make UNAME=WIN32
+```
+to build it.
 
+You can find a binary .exe release in the releases
 
 ## IMPORTANT DIFFERENCES TO POWERPC !!!!
 

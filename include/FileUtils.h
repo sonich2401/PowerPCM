@@ -148,6 +148,13 @@ v1.0
 #define PATH_MAX 512
 #endif
 
+
+#ifdef WIN32
+#define lstat stat
+#define srandom srand
+#define random rand
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -447,12 +454,15 @@ FU_COMPILE_MODE fu_FileType fu_helper__get_file_type(struct stat * FU_RESTRICT s
       return FU_DIRECTORY;
     case S_IFIFO:
       return FU_FIFO;
+	#ifndef WIN32
     case S_IFLNK:
       return FU_SYSLINK;
+	  case S_IFSOCK:
+      return FU_SOCKET;
+	#endif
     case S_IFREG:
       return FU_FILE;
-    case S_IFSOCK:
-      return FU_SOCKET;
+
     default:
       return FU_UNKOWN;
   }
@@ -475,31 +485,38 @@ FU_COMPILE_MODE void fu_helper__set_timestamp(fu_Timestamp * FU_RESTRICT ts, int
 
 FU_COMPILE_MODE char fu_helper__isDir(struct dirent* FU_RESTRICT dir){
   //printf("TYPE = %i, TEST = %i, NAME = \"%s\", BOOL = %i\n", dir->d_type, DT_DIR, dir->d_name, dir->d_type == DT_DIR);
-
-  if(dir->d_type == DT_UNKNOWN){
-    struct stat sbuff;
-    lstat(dir->d_name, &sbuff);
-    return S_ISDIR(sbuff.st_mode) && !S_ISLNK(sbuff.st_mode);
-  }
-
-  #if 0
-    return dir->d_type == DT_DIR || dir->d_type == DT_LNK;
+	struct stat sbuff;
+  #ifndef WIN32
+    if(dir->d_type == DT_UNKNOWN){
+      lstat(dir->d_name, &sbuff);
+      return S_ISDIR(sbuff.st_mode) && !S_ISLNK(sbuff.st_mode);   
+    }
+  #endif
+   
+  #ifndef WIN32
+	  return dir->d_type == DT_DIR && dir->d_type != DT_LNK;
   #else
-    return dir->d_type == DT_DIR && dir->d_type != DT_LNK;
+    return S_ISDIR(sbuff.st_mode);
   #endif
 }
 
 FU_COMPILE_MODE char fu_helper__isFile(struct dirent* FU_RESTRICT dir){
   struct stat sbuff;
-  lstat(dir->d_name, &sbuff);
-  if(dir->d_type == DT_UNKNOWN){
-    return S_ISREG(sbuff.st_mode) && !S_ISLNK(sbuff.st_mode);
-  }
-  if(S_ISLNK(sbuff.st_mode)){
-    return 0;
-  }
-
-  return dir->d_type == DT_REG && dir->d_type != DT_LNK;
+  
+  
+  #ifndef WIN32
+    lstat(dir->d_name, &sbuff);
+    if(dir->d_type == DT_UNKNOWN){
+      return S_ISREG(sbuff.st_mode) && !S_ISLNK(sbuff.st_mode);
+    }
+    if(S_ISLNK(sbuff.st_mode)){
+      return 0;
+    }
+    return dir->d_type == DT_REG && dir->d_type != DT_LNK;
+  #else
+    stat(dir->d_name, &sbuff);
+    return S_ISDIR(sbuff.st_mode);
+  #endif
 }
 
 
@@ -715,7 +732,11 @@ FU_COMPILE_MODE void fu_free_FileStats(fu_FileStats filestat){
 
 FU_COMPILE_MODE fu_FileStats fu_get_file_info(const fu_string FU_RESTRICT file_path){
   struct stat futil__st;
-  lstat(file_path, &futil__st);
+  #ifndef WIN32
+    lstat(file_path, &futil__st);
+  #else
+    stat(file_path, &futil__st);
+  #endif
 
   fu_FileStats ret;
   ret.file_name = (fu_string)malloc(strlen(file_path));
@@ -737,30 +758,46 @@ FU_COMPILE_MODE fu_FileStats fu_get_file_info(const fu_string FU_RESTRICT file_p
 
   ret.bytes = futil__st.st_size;
   ret.type = fu_helper__get_file_type(&futil__st);
-
-  ret.modified = fu_helper__to_timestamp(&futil__st.st_mtim);
-  ret.created = fu_helper__to_timestamp(&futil__st.st_ctim);
-  ret.accessed = fu_helper__to_timestamp(&futil__st.st_atim);
-
+  #ifndef WIN32
+    ret.modified = fu_helper__to_timestamp(&futil__st.st_mtim);
+    ret.created = fu_helper__to_timestamp(&futil__st.st_ctim);
+    ret.accessed = fu_helper__to_timestamp(&futil__st.st_atim);
+  #else
+    ret.modified = fu_helper__to_timestamp(&futil__st.st_mtime);
+    ret.created = fu_helper__to_timestamp(&futil__st.st_ctime);
+    ret.accessed = fu_helper__to_timestamp(&futil__st.st_atime);
+  #endif
   return ret;
 }
 
 FU_COMPILE_MODE fu_Timestamp fu_get_file_created_time(const fu_string FU_RESTRICT file_path){
   struct stat tmp;
   lstat(file_path, &tmp);
-  return fu_helper__to_timestamp(&tmp.st_ctim);
+  #ifndef WIN32
+    return fu_helper__to_timestamp(&tmp.st_ctim);
+  #else
+    return fu_helper__to_timestamp(&tmp.st_ctime);
+  #endif
 }
 
 FU_COMPILE_MODE fu_Timestamp fu_get_file_modified_time(const fu_string FU_RESTRICT file_path){
   struct stat tmp;
   lstat(file_path, &tmp);
-  return fu_helper__to_timestamp(&tmp.st_mtim);
+  #ifndef WIN32
+    return fu_helper__to_timestamp(&tmp.st_mtim);
+  #else
+    return fu_helper__to_timestamp(&tmp.st_mtime);
+  #endif
 }
 
 FU_COMPILE_MODE fu_Timestamp fu_get_file_accessed_time(const fu_string FU_RESTRICT file_path){
   struct stat tmp;
   lstat(file_path, &tmp);
-  return fu_helper__to_timestamp(&tmp.st_atim);
+  #ifndef WIN32
+    return fu_helper__to_timestamp(&tmp.st_atim);
+  #else
+    return fu_helper__to_timestamp(&tmp.st_atime);
+  #endif
 }
 
 FU_COMPILE_MODE fu_index fu_get_file_size(const fu_string FU_RESTRICT file_path){
@@ -1549,11 +1586,12 @@ FU_COMPILE_MODE fu_List fu_find(const fu_string FU_RESTRICT path, const fu_strin
       fu_string buffer = FU_STRDUP(folders.text[i]);
       struct stat sbuff;
       lstat(buffer, &sbuff);
-
+	 #ifndef WIN32
       if(S_ISLNK(sbuff.st_mode)){ //Do not follow links
         free(buffer);
         continue;
       }
+	 #endif
       if(fu_get_file_perms((const fu_string)buffer).not_accessible){ //Do we not have permissions?
         free(buffer);
         continue;

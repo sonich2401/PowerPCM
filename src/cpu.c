@@ -75,9 +75,11 @@ void print_registers(){
       if(log == NULL){
         log = " ";
       }
+	    #ifndef WIN32
       if(i == 31){
-        printf("\033[33;3m");
+        printf("\033[30;0m");
       }
+	    #endif
     }
     //#endif
     char* tmp_str = alloca(500);
@@ -99,17 +101,22 @@ void print_registers(){
     #endif
     if(logging) {
       puts(log);
+	    #ifndef WIN32
       if(i == 31){
         printf("\033[30;0m");
       }
+	    #endif
       
     } else {
       //(void)tmp_str2;
       putchar('\n');
     }
   }
-
+  #ifndef WIN32
   if(logging){printf("\033[32;3mPC:\t%llX\nLR:\t%llX\n\033[30;0m", cpu.pc, cpu.lr);}
+  #else
+  if(logging){printf("PC:\t%llX\nLR:\t%llX\n", cpu.pc, cpu.lr);}
+  #endif
 }
 //#endif
 
