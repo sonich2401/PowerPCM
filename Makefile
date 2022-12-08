@@ -19,11 +19,6 @@ CC_ARGS = -std=c++17  -static $(PIXEL_GAME_ENGINE_ARGS)
 DEFINES_DEF = DATE="\"`date`\"" VER="\"$(VERSION)\"" PROG_NAME="\"$(BUILD)\"" OS_CLEAR="\"$(OS_CLEAR)\"" 
 endif
 
-ifneq ($(UNAME), Linux)
-#CC = wine "/mnt/Windows/Program Files (x86)/CodeBlocks/MinGW/bin/g++.exe"
-CC = x86_64-w64-mingw32-g++-posix
-endif
-
 ODIR := build
 ROOT_DIRECTORY=.
 SOURCES := ${shell find ${ROOT_DIRECTORY} -type d -print}
