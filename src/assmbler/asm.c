@@ -511,6 +511,7 @@ static void clean_text(fu_TextFile* t){
       while(t->text[i][text_len - 1] == ' '){
         t->text[i][text_len - 1] = 0;
         text_len--;
+        if(text_len == 0) break;
       }
     }
 
