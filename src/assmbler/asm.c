@@ -507,9 +507,11 @@ static void clean_text(fu_TextFile* t){
 
     //remove extra spaces at the end of text
     unsigned long text_len = strlen(t->text[i]);
-    while(t->text[i][text_len - 1] == ' '){
-      t->text[i][text_len - 1] = 0;
-      text_len--;
+    if(text_len > 0){ 
+      while(t->text[i][text_len - 1] == ' '){
+        t->text[i][text_len - 1] = 0;
+        text_len--;
+      }
     }
 
     if(strlen(t->text[i]) == 0){ //Remove blank lines
