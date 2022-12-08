@@ -489,7 +489,10 @@ static void clean_text(fu_TextFile* t){
     cstrrem(t->text[i], ')');
     tmp = t->text[i];
     while((tmp = strstr(t->text[i], "  "))){ //remove all double spaces
-      cstrshl(tmp, 1);
+      char* cursor = tmp;
+      unsigned long char_count = 0;
+      while(*cursor == ' ') {char_count++; cursor++;}
+      cstrshl(tmp, char_count - 1); //remove all but 1 space
     }
     while(t->text[i][0] == ' '){ //Remove spaces from begining
       cstrshl(t->text[i], 1);
@@ -500,6 +503,13 @@ static void clean_text(fu_TextFile* t){
     tmp = strchr(t->text[i], ';'); //Remove comments
     if(tmp != NULL){
       *tmp = 0;
+    }
+
+    //remove extra spaces at the end of text
+    unsigned long text_len = strlen(t->text[i]);
+    while(t->text[i][text_len - 1] == ' '){
+      t->text[i][text_len - 1] = 0;
+      text_len--;
     }
 
     if(strlen(t->text[i]) == 0){ //Remove blank lines

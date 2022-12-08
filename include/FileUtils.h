@@ -98,7 +98,7 @@ v1.0
 //Uncomment line below to disable restrict (helps compiling on old C++ compilers but helps performance if you do not disable restrict)
   //#define FU_NO_RESTRICT
 //Uncomment to enable debugging messages
-//  #define FU_DEBUG true
+  #define FU_DEBUG true
 //Uncomment to staticly compile all functions which allows you not to use #define FU_IMP
   //#define FU_STATIC_COMPILE
 
