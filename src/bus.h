@@ -3,14 +3,12 @@
 #include "types.h"
 #include <stddef.h>
 
-#if 0
+#if 1
 #define SCREEN_W 640
 #define SCREEN_H 320
 #define BITDEPTH 8
-#define FRAMEBUFFER_SIZE                                                       \
-  ((unsigned long long)(SCREEN_W * SCREEN_H *                                  \
-                        (((float)BITDEPTH) / ((float)8) + 0.4f) * 3))
-#include "gfxengine/ppu.h" //OAM SIZE
+#define FRAMEBUFFER_SIZE ((SCREEN_W * SCREEN_H * 4))
+#include "gfx/ppu.h" //OAM SIZE
 
 #else
 
@@ -51,9 +49,9 @@ typedef union {
       byte_t STACK[STACK_SIZE];
       byte_t RAM[RAM_SIZE];
     };
-#if OAM_SIZE != 0
+#ifdef OAM_SIZE
     //byte_t OAM[OAM_SIZE];
-    OAM_t OAM;
+    OAM_obj OAM[OAM_SIZE];
     byte_t FRAMEBUFFER[FRAMEBUFFER_SIZE];
 #else
     union {

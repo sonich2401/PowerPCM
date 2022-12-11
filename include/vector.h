@@ -1,5 +1,10 @@
 #ifndef VECTOR_H
 #define VECTOR_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 
 typedef struct{
@@ -40,5 +45,10 @@ unsigned long vector_size(vector * vec);
 
 //Cleans up self and children
 void vector_deconstruct(vector * vec);
+
+#ifdef __cplusplus
+};
+#endif
+
 
 #endif

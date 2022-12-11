@@ -431,6 +431,45 @@ static void func_mr(u32 opdat){
 
 
 //SYSTEM FUNCTIONS
+//https://winjia.medium.com/linux-getch-for-unix-c2c829721a30
+#ifndef WIN32
+#include <termios.h>
+#include <unistd.h>
+
+static int getch(void)
+{
+	struct termios oldt, newt;
+	int ch;
+
+	tcgetattr(STDIN_FILENO, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+	ch = getchar();
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+	return ch;
+}
+
+static int getche(void)
+{
+	struct termios oldt, newt;
+	int ch;
+
+	tcgetattr(STDIN_FILENO, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON);
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+	ch = getchar();
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+	return ch;
+}
+#else
+#include <conio.h>
+#endif
+
+#include "gfx/ppu.h"
 #include <stdint.h>
 static void func_syscall(u32 opdat){
 	TYPE_F
@@ -448,6 +487,16 @@ static void func_syscall(u32 opdat){
 			if(err != 0){
 				cpu.cr.ERR = 1;
 			}
+		break;
+		case GETCH:
+			if(cpu.ru[4] != 0){
+				cpu.ru[3] = getche();
+			}else{
+				cpu.ru[3] = getch();
+			}
+		break;
+		case GFX:
+			ppu_process_ext_device_command();
 		break;
 		
 		case RAND:

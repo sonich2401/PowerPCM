@@ -23,7 +23,7 @@ int main(int argc, char* argv[]){
   logging = false;
   if(argc > 1){
     if(strcmp(argv[1], "-l") == 0){
-      printf("ROM_SIZE: %X\nRAM_SIZE: %X\nSTACK_SIZE: %X\n", ROM_SIZE, RAM_SIZE - STACK_SIZE, STACK_SIZE);
+      printf("ROM_SIZE: %X\nRAM_SIZE: %X\nSTACK_SIZE: %X\nFBUFFER_SIZE: %llX\n", ROM_SIZE, RAM_SIZE - STACK_SIZE, STACK_SIZE, FRAMEBUFFER_SIZE);
       logging = true;
       argv++;
       argc--;

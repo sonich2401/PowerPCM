@@ -324,7 +324,7 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
   for(u64 i = 0; i < txt->size; i++){
     char* cursor = strchr(txt->text[i], ':');
     if(!cursor) continue;
-    if(cstrcnt(txt->text[i], "\"") == 2){
+    if(cstrcnt(txt->text[i], "\"") == 2 && strstr(txt->text[i], ".file ") != txt->text[i]){
       //Remove quotes and copy binary data
       fu_BinFile dat_seg;
       dat_seg.bin = strdup(strchr(txt->text[i], '"') + 1);
@@ -349,6 +349,46 @@ static Intermediate_Asm_File_t get_labels(fu_TextFile* txt, vector* __restrict__
       continue;
     }
   
+    //.file testFile: "/home/rendev/Desktop/myFile.s"
+    if(strlen(cursor) > 2 && strstr(txt->text[i], ".file ") == txt->text[i]){  //Number is after the label
+      if(cstrcnt(txt->text[i], "\"") != 2){
+        fprintf(stderr, "ERR: Line #%llu: \"%s\" does not have double quotes for the file name!\n", i, txt->text[i]);
+        exit(EXIT_FAILURE);
+      }
+
+      char* fp = cstrdup_stack(strchr(txt->text[i], '"') + 1);
+      *(strrchr(fp, '"')) = 0;
+      char* tmp_cursor = strstr(fp, ".png");
+      bool isSprite = false;
+      if(tmp_cursor != NULL){
+        isSprite = strlen(tmp_cursor) == strlen(".png"); //Does the file have a .png exension
+      }
+
+      fu_BinFile bin = fu_load_bin_file(fp);
+
+      //add the file byte count to the constant data
+      fu_BinFile dat_seg = fu_alloc_bin_file(sizeof(fu_index));
+      *(fu_index*)dat_seg.bin = bin.size;
+
+      fu_join_bin(&ret.asm_global.bin, dat_seg);
+      fu_join_bin(&ret.asm_global.bin, bin);
+
+
+      
+      //Add label
+      Label tmp = Label_construct(strdup(strchr(txt->text[i], ' ') + 1), pc + ROM_START); //Add +ROM_START because DMA is not relitive to cpu.pc
+      *(strchr(tmp.str, ' ') - 1) = 0; //remove ':' character
+      labels.push_back(&labels, &tmp);
+      pc += dat_seg.size;
+      pc += bin.size;
+      fu_delete_text(txt, i); //Remove line that contained the label
+      i--;
+
+      fu_free_bin_file(dat_seg);
+      fu_free_bin_file(bin);
+      continue;
+    }
+
     //.macro testMacro: 20
     if(strlen(cursor) > 2 && strstr(txt->text[i], ".macro ") == txt->text[i]){  //Number is after the label
 
@@ -487,6 +527,9 @@ static void clean_text(fu_TextFile* t){
     if(tmp) *tmp = ' ';
     cstrrem(t->text[i], ',');
     cstrrem(t->text[i], ')');
+    char* new_str = cstrrep(t->text[i], "(", " ");
+    free(t->text[i]);
+    t->text[i] = new_str;
     tmp = t->text[i];
     while((tmp = strstr(t->text[i], "  "))){ //remove all double spaces
       char* cursor = tmp;
@@ -499,6 +542,12 @@ static void clean_text(fu_TextFile* t){
     }
     while(strrchr(t->text[i], '\t')){ //remove all tabs
       cstrrem(t->text[i], '\t');
+    }
+    while(strrchr(t->text[i], '\n')){ //remove all newlines (should never happen)
+      cstrrem(t->text[i], '\n');
+    }
+    while(strrchr(t->text[i], '\r')){ //remove all return carrages (windows compatibility)
+      cstrrem(t->text[i], '\r');
     }
     tmp = strchr(t->text[i], ';'); //Remove comments
     if(tmp != NULL){
@@ -562,6 +611,8 @@ static INLINE vector get_predefined_labels(){
   
   PUSH_LABEL("__STACK_TOP__", STACK_SIZE);
   PUSH_LABEL("___MALLOC__BLOCK__", STACK_SIZE);
+  PUSH_LABEL("__FRAMEBUFFER_START__", FRAMEBUFFER_START);
+  PUSH_LABEL("__FRAMEBUFFER_END__", FRAMEBUFFER_END);
   
   PUSH_LABEL("true", 1);
   PUSH_LABEL("TRUE", 1);

@@ -11,6 +11,8 @@
 ; realloc(void* ptr)
 ; malloc(unsigned int size)
 ; free(void* ptr)
+; fsize                                          ; Gets file size
+; fptr                                           ; Gets a raw data ptr to the file
 
 
 strlen:
@@ -183,6 +185,15 @@ memcpy:
   lw r14, 0(r0)
   lw r3,  4(r0)
   addi r0, r0, 8
+  blr
+
+
+fsize:
+  lw r3, 0(r3)
+  blr
+
+fptr:
+  addi r3, r3, 8
   blr
 
 ;; MALLOC IMPLEMENTATION

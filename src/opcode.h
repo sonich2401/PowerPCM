@@ -89,7 +89,9 @@ typedef enum {
 typedef enum{
 	PUT,
 	SCAN,
-	RAND
+	RAND,
+	GETCH,
+	GFX
 }SYSCALL_T;
 
 
