@@ -75,8 +75,8 @@ public:
         if(command_waiting){
             this->Clear(olc::BLACK);
             pthread_mutex_lock(&mutex);
-            for(unsigned int x = 0; x < this->GetDrawTargetWidth(); x++){
-                for(unsigned int y = 0; y < this->GetDrawTargetHeight(); y++){
+            for(int x = 0; x < this->GetDrawTargetWidth(); x++){
+                for(int y = 0; y < this->GetDrawTargetHeight(); y++){
                     Draw({x, y}, *(olc::Pixel*)&fb[fb_index^1][y * this->GetDrawTargetWidth() + x]);
                 }
             }
@@ -166,7 +166,7 @@ void ppu_process_ext_device_command(void){
         break;
 
         default:
-            fprintf(stderr, "ERR: Invalid GFX Command [%llu]! PC = %llX\n", cpu.ru[3], cpu.pc);
+            fprintf(stderr, "ERR: Invalid GFX Command [%lu]! PC = %llX\n", cpu.ru[3], cpu.pc);
             exit(EXIT_FAILURE);
         break;
     }

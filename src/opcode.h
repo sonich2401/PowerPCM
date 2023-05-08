@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "types.h"
+#include "FileUtils.h"
 
 #define OPCODE_LEN 47
 
@@ -85,6 +86,18 @@ typedef enum {
 	END
 }opcode_enum;
 
+typedef enum{
+	ADDR_0,
+	ADDR_A,
+	ADDR_B,
+	ADDR_C,
+	ADDR_D,
+	ADDR_E,
+	ADDR_F
+}ADDR_MODE_t;
+
+extern const ADDR_MODE_t opcode_modes[OPCODE_LEN];
+
 
 typedef enum{
 	PUT,
@@ -98,5 +111,5 @@ typedef enum{
 
 microcode_t decode_opcode_name(const char* __restrict__ name);
 char* opcode_to_name(unsigned char opcode);
-microcode_t decode_bin(const char* bytes);
+fu_TextFile decode_bin(fu_BinFile bin);
 void init_opcodes();

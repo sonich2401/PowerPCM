@@ -10,6 +10,7 @@
 #include "assmbler/linker.h"
 
 #include "bus.h"
+#include "opcode.h"
 
 
 fu_BinFile get_program(); //testprog.c
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]){
   logging = false;
   if(argc > 1){
     if(strcmp(argv[1], "-l") == 0){
-      printf("ROM_SIZE: %X\nRAM_SIZE: %X\nSTACK_SIZE: %X\nFBUFFER_SIZE: %llX\n", ROM_SIZE, RAM_SIZE - STACK_SIZE, STACK_SIZE, FRAMEBUFFER_SIZE);
+      printf("ROM_SIZE: %X\nRAM_SIZE: %X\nSTACK_SIZE: %X\nFBUFFER_SIZE: %X\n", ROM_SIZE, RAM_SIZE - STACK_SIZE, STACK_SIZE, FRAMEBUFFER_SIZE);
       logging = true;
       argv++;
       argc--;
@@ -32,6 +33,23 @@ int main(int argc, char* argv[]){
         output = true;
         argv++;
         argc--;
+    }
+    if(strcmp(argv[1], "-d") == 0){
+      argv++;
+      argc--;
+      if(argv[1] != NULL){
+        fu_BinFile binary = fu_load_bin_file(argv[1]);
+        fu_TextFile decoded_binary = decode_bin(binary);
+        for(fu_index i = 0; i < decoded_binary.size; i++){
+          puts(decoded_binary.text[i]);
+        }
+        fu_free_bin_file(binary);
+        fu_free_text_file(decoded_binary);
+        exit(EXIT_SUCCESS);
+      }else{
+        fprintf(stderr, "ERR: No ROM provided!\n");
+        exit(EXIT_FAILURE);
+      }
     }
     if(strstr(argv[1], ".bin")){
       rom = fu_load_bin_file(argv[1]);

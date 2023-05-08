@@ -66,6 +66,74 @@ const char* opcode_str[OPCODE_LEN] = {
 	"END"
 };
 
+
+const ADDR_MODE_t opcode_modes[OPCODE_LEN] = {
+	ADDR_0,
+	ADDR_D,
+	ADDR_C,
+	ADDR_C,
+	ADDR_C,
+	ADDR_C,
+	ADDR_C,
+	ADDR_C,
+	//AND
+	ADDR_A,
+	ADDR_B,
+	//OR
+	ADDR_A,
+	ADDR_B,
+	//XOR
+	ADDR_A,
+	ADDR_B,
+	//ADD
+	ADDR_A,
+	ADDR_B,
+	//SUB
+	ADDR_A,
+	ADDR_B,
+	//MUL
+	ADDR_A,
+	ADDR_B,
+	//DIV
+	ADDR_A,
+	ADDR_B,
+	//MFLR
+	ADDR_E,
+	ADDR_E,
+	//MTCTR
+	ADDR_E,
+	ADDR_E,
+	//MR
+	ADDR_A,
+	//BRANCHING
+	ADDR_F, //BNE
+	ADDR_F, //BEQ
+	ADDR_F, //BGT
+	ADDR_F, //BGE
+	ADDR_F, //BLT
+	ADDR_F, //BLE
+	//BRANCH CTRL
+	ADDR_F, //BDNZ
+	ADDR_F, //BDZ
+	ADDR_F, //BCTRL
+	//COMPARE
+	ADDR_A,
+	ADDR_D,
+	//BRANCHING AGAIN
+	ADDR_0, //BLR
+	ADDR_F, //BL
+	ADDR_F, //B
+	//SHIFT
+	ADDR_A, //SL
+	ADDR_B, //SLI
+	ADDR_A, //SR
+	ADDR_B, //SRI
+
+	//SYSTEM
+	ADDR_F, //SC
+	ADDR_F, //END
+};
+
 #include <stdlib.h>
 
 
@@ -559,19 +627,75 @@ INLINE char* opcode_to_name(unsigned char opcode){
 }
 
 
-INLINE microcode_t decode_bin(const char* bytes){
-       unsigned char opcode = GET_OP((*(unsigned char*)bytes));
-	//if(OPCODE_LEN <= opcode){
-  //            puts("WARNING: Invalid opcode!");
-  //            abort();
-//		return func_nop;
- //      }
-       microcode_t ret = opcode_ptr[opcode];
-  //     if(ret == NULL){
- //             printf("WARNING: Function pointer at %X not set!\n", opcode);
-  //            return func_nop;
-  //     }
-       return ret;
+INLINE fu_TextFile decode_bin(fu_BinFile bin){
+	fu_index num_of_opcodes = bin.size / sizeof(opcode_t);
+	fu_TextFile ret = fu_alloc_text_file(num_of_opcodes);
+
+	for(fu_index i = 0; i < ret.size; i++){
+		opcode_t opdat = *(opcode_t*)bin.bin;
+
+		if(GET_OP(opdat) >= OPCODE_LEN){
+			(void)asprintf(&ret.text[i], "DATA %X %X %X %X", *(unsigned char*)(bin.bin + 0), *(unsigned char*)(bin.bin + 1), *(unsigned char*)(bin.bin + 2), *(unsigned char*)(bin.bin + 3) );
+			bin.bin += sizeof(opcode_t);
+			continue;
+		}
+
+		ADDR_MODE_t addr_mode = opcode_modes[GET_OP(opdat)];
+		char* formatted_string = NULL;
+
+		//Vars for switch
+		u8 dest = 0;
+		u8 a = 0;
+		u8 b = 0;
+		u32 offset = 0;
+		u32 imm = 0;
+
+		switch(addr_mode){
+			case ADDR_0:
+				asprintf(&formatted_string, "%s", opcode_str[GET_OP(opdat)]);
+			break;
+			case ADDR_A:
+				dest = GET_REG(opdat, 1);
+				a = GET_REG(opdat, 2);
+				b = GET_REG(opdat, 3);
+				asprintf(&formatted_string, "%s R%u, R%u, R%u", opcode_str[GET_OP(opdat)], dest, a, b);
+			break;
+			case ADDR_B:
+				dest = GET_REG(opdat, 1);
+				a = GET_REG(opdat, 2);
+				b = GET_ADD_IMM(opdat);
+				asprintf(&formatted_string, "%s R%u, R%u, %u", opcode_str[GET_OP(opdat)], dest, a, b);
+			break;
+			case ADDR_C:
+				dest = GET_REG(opdat, 1);
+  				a = GET_REG(opdat, 2);
+  				offset = GET_INDEX_OFFSET(opdat);
+  				asprintf(&formatted_string, "%s R%u, %u(R%u)", opcode_str[GET_OP(opdat)], dest, offset, a);
+			break;
+			case ADDR_D:
+				dest = GET_REG(opdat, 1);
+				imm = GET_IMM(opdat);
+				asprintf(&formatted_string, "%s R%u, %u", opcode_str[GET_OP(opdat)], dest, imm);
+			break;
+			case ADDR_E:
+				dest = GET_REG(opdat, 1);
+				asprintf(&formatted_string, "%s R%u", opcode_str[GET_OP(opdat)], dest);
+			break;
+			case ADDR_F:
+				imm = GET_IMM_IMP(opdat);
+				asprintf(&formatted_string, "%s %u", opcode_str[GET_OP(opdat)], imm);
+			break;
+
+			default:
+				fprintf(stderr, "WARN: Unknown opcode type of %c!\n", (unsigned char)(opcode_modes[GET_OP(opdat)] + 1 + 'A'));
+			break;
+		}
+
+		ret.text[i] = formatted_string;
+		bin.bin += sizeof(opcode_t); //Move to next opcode
+	}
+       
+    return ret;
 }
 
 

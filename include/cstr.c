@@ -140,7 +140,10 @@ cstr cstrdel(cstr str, unsigned int start, unsigned int end){
 	unsigned long str_size = strlen(str);
 	if(end == 0) end = str_size;
 	
-	unsigned long size = sizeof(char) * (str_size - (end - start) + 1);
+	#ifdef CSTR_DEBUG
+		unsigned long size = sizeof(char) * (str_size - (end - start) + 1);
+	#endif
+	
 	#ifdef CSTR_COPY
 		cstr ret = (cstr)malloc(size);
 	#else
