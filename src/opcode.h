@@ -2,7 +2,7 @@
 #include "types.h"
 #include "FileUtils.h"
 
-#define OPCODE_LEN 47
+#define OPCODE_LEN 48
 
 typedef unsigned int opcode_t;
 
@@ -47,6 +47,7 @@ typedef enum {
 	ORI,
 	XOR,
 	XORI,
+	NOT,
 	ADD,
 	ADDI,
 	SUB,

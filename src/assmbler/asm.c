@@ -98,6 +98,7 @@ static INLINE u32 func_0(u8 opcode){
 #define func_ori func_B
 #define func_xor func_A
 #define func_xori func_B
+#define func_not func_F
 
 #define func_li func_D
 #define func_load_byte func_C
@@ -201,6 +202,7 @@ static inline void init_ops(){
 	DEF_OP(ORI, func_ori);
 	DEF_OP(XOR, func_xor);
 	DEF_OP(XORI, func_xori);
+	DEF_OP(NOT, func_not);
 	
 	DEF_OP(MR, func_mr);
 	DEF_OP(MFLR, func_mflr);
@@ -247,6 +249,8 @@ u8 name_to_instr(const char* __restrict__ memonic){
     }
   }
 
+  fprintf(stderr, "ERR: Unknown memonic of \"%s\"\n", memonic);
+  abort();
   return 0;
 }
 
@@ -507,7 +511,7 @@ static void remove_register_indicators(cstr str){
 
 
 //Checks the string for any non number characters
-static INLINE bool isBadString(cstr str){
+static bool isBadString(cstr str){
 	if(!(str = strchr(str, ' ')) ) return false; //Checks for the first spacebar. If there is no spacebar it returns false
 	while(*str != 0){
 		if(*str >= 'a' && *str <= 'z') return true;
@@ -604,7 +608,7 @@ char* check_and_replace_label(cstr ele, Intermediate_Asm_File_t asm_f) {
 
 #define PUSH_LABEL(key, val) tmp_label = Label_construct(strdup(key), val); ret.push_back(&ret, &tmp_label)
 
-static INLINE vector get_predefined_labels(){
+static vector get_predefined_labels(){
   vector ret;
   vector_init(&ret, sizeof(Label), free_label);
   Label tmp_label;
@@ -613,6 +617,8 @@ static INLINE vector get_predefined_labels(){
   PUSH_LABEL("___MALLOC__BLOCK__", STACK_SIZE);
   PUSH_LABEL("__FRAMEBUFFER_START__", FRAMEBUFFER_START);
   PUSH_LABEL("__FRAMEBUFFER_END__", FRAMEBUFFER_END);
+  PUSH_LABEL("__FRAMEBUFFER_WIDTH__", SCREEN_W);
+  PUSH_LABEL("__FRAMEBUFFER_HEIGHT__", SCREEN_H);
   
   PUSH_LABEL("true", 1);
   PUSH_LABEL("TRUE", 1);

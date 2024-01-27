@@ -70,6 +70,18 @@ INLINE void* vector_index(vector* __restrict__ vec, unsigned long int index){
     return vec->dat + (index * vec->type_size);
 }
 
+//Erase element at 'index'
+void vector_erase(vector* vec, unsigned long index){
+    if(vec->total_data == 0) return;
+    if(index == vec->total_data - 1){
+        vec->total_data--;
+        return;
+    }
+    memcpy(vector_index(vec, index), vector_index(vec, index + 1), (vec->total_data - index - 1) * vec->type_size);
+    vec->total_data--;
+    return;
+}
+
 //Replace data at a given index
 INLINE void vector_replace(vector* __restrict__ vec, unsigned long index, void* __restrict__ data){
    for(unsigned short i = 0; i < vec->type_size; i++){

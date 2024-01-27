@@ -108,6 +108,22 @@ itoa:
 
   mr r14, r3    ; int num = arg_1
   mr r15, r4
+  
+  cmpi r14, 0
+  bgt __tostring__lenloop
+  	;If this condition is met, we have a negative number.
+  	;Increase len by 1 and then negate the number and add a '-' char
+  	addi r15, r15, 1
+  	not r14
+  	addi r14, r14, 1
+
+	divi r15, r15, 0
+	derg
+
+  	li r16, 45
+  	sb r16, 0(r4)
+  	
+  
   __tostring__lenloop:
     ; num /= 10;
     divi r14, r14, 10

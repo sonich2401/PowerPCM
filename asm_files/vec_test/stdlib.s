@@ -1,1 +1,1 @@
-../stdlib.s
+asm_files/stdlib.s

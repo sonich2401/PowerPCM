@@ -70,7 +70,7 @@ int main(int argc, char* argv[]){
       
     if(!filesFound){
       fprintf(stderr, "ERR: The files you entered are not postfixed with the .s extension!\n");
-      exit(-1);
+      exit(EXIT_FAILURE);
     }else{
       rom = link_asm(files_to_assemble);
     }
@@ -84,6 +84,8 @@ int main(int argc, char* argv[]){
   
   if(output){
     fu_save_bin_file("./a.bin", rom);
+    fu_free_bin_file(rom);
+    exit(EXIT_SUCCESS);
   }
   
   main_program:

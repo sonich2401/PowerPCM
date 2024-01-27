@@ -4,6 +4,7 @@
 #include "types.h"
 
 #include "FileUtils.h"
+#include "vector.h"
 
 #include <stdio.h>
 
@@ -26,6 +27,7 @@ const char* opcode_str[OPCODE_LEN] = {
 	"ORI",
 	"XOR",
 	"XORI",
+	"NOT",
 	"ADD",
 	"ADDI",
 	"SUB",
@@ -70,10 +72,10 @@ const char* opcode_str[OPCODE_LEN] = {
 const ADDR_MODE_t opcode_modes[OPCODE_LEN] = {
 	ADDR_0,
 	ADDR_D,
+	ADDR_C, //LB
 	ADDR_C,
 	ADDR_C,
-	ADDR_C,
-	ADDR_C,
+	ADDR_C, //SB
 	ADDR_C,
 	ADDR_C,
 	//AND
@@ -85,6 +87,8 @@ const ADDR_MODE_t opcode_modes[OPCODE_LEN] = {
 	//XOR
 	ADDR_A,
 	ADDR_B,
+	//NOT
+	ADDR_F,
 	//ADD
 	ADDR_A,
 	ADDR_B,
@@ -302,7 +306,7 @@ static void func_sb(u32 opdat){
 static void func_shw(u32 opdat){
   TYPE_C
   write16( cpu.ru[a] + CONV_S32(offset), cpu.ru[dest] & 0xFFFF);
-}
+} 
 
 static void func_sw(u32 opdat){
   TYPE_C
@@ -488,6 +492,11 @@ static void func_xori(u32 opdat){
 	xor_template(dest, a, b);
 }
 
+static void func_not(u32 opdat){
+	TYPE_F
+	cpu.ru[imm] = ~cpu.ru[imm];
+}
+
 
 
 //MISC. FUNCTIONS
@@ -627,18 +636,91 @@ INLINE char* opcode_to_name(unsigned char opcode){
 }
 
 
-INLINE fu_TextFile decode_bin(fu_BinFile bin){
-	fu_index num_of_opcodes = bin.size / sizeof(opcode_t);
-	fu_TextFile ret = fu_alloc_text_file(num_of_opcodes);
+char* encode_data_block(fu_hexarray ptr, fu_index size){
+	char* text = NULL; 
+	(void)asprintf(&text, "DATA ");
+	for(fu_index i = 0; i < size; i++){
+		char* str_backup = text;
+		(void)asprintf(&text, "%s 0x%X ", str_backup, *(u8*)ptr);
+		free(str_backup);
+		ptr++;
+	}
+	return text;
+}
 
-	for(fu_index i = 0; i < ret.size; i++){
-		opcode_t opdat = *(opcode_t*)bin.bin;
+void simplify_memory_vector(vector* v){
+	for(fu_index i = 0; i < vector_size(v); i++){
+		fu_BinFile* region = (fu_BinFile*)vector_index(v, i);
+		for(fu_index j = 0; j < vector_size(v); j++){
+			if(i == j) continue;
+			fu_BinFile region1 = *(fu_BinFile*)vector_index(v, j);
+			if(region->bin <= region1.bin && region->bin + region->size >= region1.bin){
+				fu_BinFile new_bin;
+				new_bin.bin = region->bin;
+				new_bin.size = (region1.bin + region1.size) - region->bin;
 
-		if(GET_OP(opdat) >= OPCODE_LEN){
-			(void)asprintf(&ret.text[i], "DATA %X %X %X %X", *(unsigned char*)(bin.bin + 0), *(unsigned char*)(bin.bin + 1), *(unsigned char*)(bin.bin + 2), *(unsigned char*)(bin.bin + 3) );
-			bin.bin += sizeof(opcode_t);
-			continue;
+				//Overrite the old region block with the expanded version
+				*region = new_bin;
+
+				//remove element j (aka region1)
+				vector_erase(v, j);
+
+				//Move cursor back so when the ++ happens it will stay in the current cursor position
+				j--;
+			}
 		}
+	}
+}
+
+void sort_mem_vector(vector* v){
+	for(fu_index i = 1; i < vector_size(v); i++){
+		fu_BinFile b1 = *(fu_BinFile*)vector_index(v, i - 1);
+		fu_BinFile b2 = *(fu_BinFile*)vector_index(v, i);
+
+		if(b2.bin < b1.bin){
+			*(fu_BinFile*)vector_index(v, i - 1) = b2;
+			*(fu_BinFile*)vector_index(v, i) = b1;
+			i = 1; //Restart checking
+		}
+	}
+}
+
+bool does_memory_block_exist(fu_hexarray ptr, vector* v){
+	for(fu_index i = 0; i < vector_size(v); i++){
+		fu_BinFile region = *(fu_BinFile*)vector_index(v, i);
+		if(region.bin == ptr) return true;
+	}
+	return false;
+}
+
+void find_branches(fu_hexarray ptr, vector* v, fu_hexarray bin_start, fu_hexarray bin_end){
+	if(does_memory_block_exist(ptr, v)){
+		return;
+	}
+	fu_BinFile block;
+	block.bin = ptr;
+	block.size = 0;
+	while(ptr < bin_end){
+		opcode_t opdat = *(opcode_t*)ptr;
+		ADDR_MODE_t addr_mode = opcode_modes[GET_OP(opdat)];
+
+		if(addr_mode == ADDR_F){ //ADDR_F is almost always used for branching
+			find_branches(bin_start + GET_IMM_IMP(opdat), v, bin_start, bin_end);
+		}
+		if(GET_OP(opdat) == B || GET_OP(opdat) == BL || GET_OP(opdat) == BLR){
+			break;
+		}
+
+		ptr += sizeof(opcode_t);
+		block.size += sizeof(opcode_t);
+	}
+	vector_push_back(v, &block);
+	simplify_memory_vector(v);
+}
+
+/*
+for(fu_index i = 1; i < ret.size; i++){
+		opcode_t opdat = *(opcode_t*)bin.bin;
 
 		ADDR_MODE_t addr_mode = opcode_modes[GET_OP(opdat)];
 		char* formatted_string = NULL;
@@ -694,7 +776,27 @@ INLINE fu_TextFile decode_bin(fu_BinFile bin){
 		ret.text[i] = formatted_string;
 		bin.bin += sizeof(opcode_t); //Move to next opcode
 	}
-       
+*/
+
+
+void free_bin_file_vector_version(fu_BinFile* b){
+	fu_free_bin_file(*b);
+}
+
+fu_TextFile decode_bin(fu_BinFile bin){     
+	fu_TextFile ret = fu_alloc_text_file((bin.size / sizeof(opcode_t)) + 1); //This garentees at least enough lines
+	vector mem_map = vector_create(sizeof(fu_BinFile), free_bin_file_vector_version);
+	u32 start_pc_vector = *(u32*)bin.bin;
+	find_branches(bin.bin + start_pc_vector, &mem_map, bin.bin, bin.bin + bin.size);
+	sort_mem_vector(&mem_map);
+
+	for(fu_index i = 1; i < vector_size(&mem_map); i++){
+		fu_BinFile b1 = *(fu_BinFile*)vector_index(&mem_map, i - 1);
+		fu_BinFile b2 = *(fu_BinFile*)vector_index(&mem_map, i);
+		fu_hexarray start = b1.bin + b1.size;
+		fu_hexarray end = b2.bin;
+		encode_data_block(start, end-start);
+	}
     return ret;
 }
 
@@ -763,6 +865,7 @@ void init_opcodes(){
 	DEF_OP(ORI, func_ori);
 	DEF_OP(XOR, func_xor);
 	DEF_OP(XORI, func_xori);
+	DEF_OP(NOT, func_not);
 	
 	DEF_OP(MR, func_mr);
 	DEF_OP(MFLR, func_mflr);

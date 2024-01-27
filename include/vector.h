@@ -37,6 +37,9 @@ void vector_pop_back(vector * vec);
 //Get the value stored at the index in the vector
 void * vector_index(vector * vec, unsigned long index);
 
+//Erase element at 'index'
+void vector_erase(vector* vec, unsigned long index);
+
 //Replace data at a given index
 void vector_replace(vector * vec, unsigned long index, void* data);
 
