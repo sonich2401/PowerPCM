@@ -13,7 +13,14 @@
 #include "opcode.h"
 
 
-fu_BinFile get_program(); //testprog.c
+
+
+static void print_help(void){
+	fprintf(stderr, "Usage\n\tppcm [ROM FILENAME | SOURCE FILENAME] [-l|-o FILENAME]\n");
+}
+
+
+
 char DrawFrame;
 char logging = false;
 char output = false;
@@ -34,6 +41,8 @@ int main(int argc, char* argv[]){
         argv++;
         argc--;
     }
+   	//Disabled until I can create a proper disassembler
+    #if 0
     if(strcmp(argv[1], "-d") == 0){
       argv++;
       argc--;
@@ -51,6 +60,7 @@ int main(int argc, char* argv[]){
         exit(EXIT_FAILURE);
       }
     }
+    #endif
     if(strstr(argv[1], ".bin")){
       rom = fu_load_bin_file(argv[1]);
       goto main_program;
@@ -76,10 +86,9 @@ int main(int argc, char* argv[]){
     }
     
   }else{
-    //Get a built in program seeing as no program was given
-    logging = true;
-    rom = get_program();
-    puts("RUNNING DEFAULT PROGRAM");
+    //Display error message because no rom or asm was specified
+    print_help();
+    return EXIT_FAILURE;
   }
   
   if(output){

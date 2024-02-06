@@ -48,11 +48,13 @@ INLINE void load_rom(const char* bytes, u32 size){
   //printf("START = %llu, %llu, %llu\n", cpu.pc + ROM_START, cpu.pc, ROM_START);
 }
 
-extern microcode_t opcode_ptr[OPCODE_LEN];
+
 INLINE void step(){
-  u32  opdat = read32(cpu.pc + ROM_START);
-  opcode_ptr[GET_OP(opdat)](opdat);
-  cpu.pc += 4;
+	u32 opdat = read32(cpu.pc + ROM_START);
+	microcode_t instruction = decode_opcode_bytes(opdat);
+	instruction(opdat);
+  
+	cpu.pc += 4;
 }
 
 

@@ -1,18 +1,21 @@
 ﻿#pragma once
+
 #include "types.h"
 #include "FileUtils.h"
 
-#define OPCODE_LEN 48
+//PPC ISA stuff
+#include "isa/ppc_isa.h"
+#include "isa/forms.h"
+//
 
-typedef unsigned int opcode_t;
 
-typedef void(*microcode_t)(u32);
+#define OPCODE_LEN 0b111111
 
 
 #define OP_BITMASK 0b111111
 #define OP_SIZE 6
 
-#define GET_OP(dat) ((dat) & OP_BITMASK)
+#define GET_OP(dat) ((((GENERIC_FORM_t*)&dat))->opcode)
 #define SET_OP(dat, opcode) (((dat) &(~OP_BITMASK)) | ((opcode) & OP_BITMASK))
 
 #define GET_REG(dat, reg_num) (((dat) >> (OP_SIZE + (5 * (reg_num - 1)))) & 0b11111)
@@ -30,75 +33,8 @@ typedef void(*microcode_t)(u32);
 #define GET_INDEX_OFFSET(dat) ((dat) >> 16)
 #define SET_INDEX_OFFSET(dat, val) ((0b11111111111111111 & (dat)) | ((val) << 16))
 
-
-
-typedef enum {
-	NOP,
-	LI,
-	LB,
-	LHW,
-	LW,
-	SB,
-	SHW,
-	SW,
-	AND,
-	ANDI,
-	OR,
-	ORI,
-	XOR,
-	XORI,
-	NOT,
-	ADD,
-	ADDI,
-	SUB,
-	SUBI,
-	MUL,
-	MULI,
-	DIV,
-	DIVI,
-	MFLR,
-	MTLR,
-	MFCTR,
-	MTCTR,
-	MR,
-	
-	BNE,
-	BEQ,
-	BGT,
-	BGE,
-	BLT,
-	BLE,
-	
-	BDNZ,
-	BDZ,
-	BCTRL,
-	
-	CMP,
-	CMPI,
-	BLR,
-	BL,
-	B,
-	SL,
-	SLI,
-	SR,
-	SRI,
-	
-	SC,
-	END
-}opcode_enum;
-
-typedef enum{
-	ADDR_0,
-	ADDR_A,
-	ADDR_B,
-	ADDR_C,
-	ADDR_D,
-	ADDR_E,
-	ADDR_F
-}ADDR_MODE_t;
-
-extern const ADDR_MODE_t opcode_modes[OPCODE_LEN];
-
+typedef u32 opcode_t;
+typedef void(*microcode_t)(u32);
 
 typedef enum{
 	PUT,
@@ -109,7 +45,10 @@ typedef enum{
 }SYSCALL_T;
 
 
+extern const char* OPCODE_NAMES[OPCODE_LEN];
 
+
+microcode_t decode_opcode_bytes(u32 bytes);
 microcode_t decode_opcode_name(const char* __restrict__ name);
 char* opcode_to_name(unsigned char opcode);
 fu_TextFile decode_bin(fu_BinFile bin);

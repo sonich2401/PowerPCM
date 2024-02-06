@@ -12,220 +12,663 @@
 #include "asm.h"
 
 
-#if 0
 
-#define TYPE_0(opcode) return opcode;
-#define TYPE_A(opcode) return SET_REG(SET_REG(SET_REG(opcode, 1, dest), 2, a), 3, b);
-#define TYPE_B(opcode) return SET_ADD_IMM(SET_REG(SET_REG(opcode, 1, dest), 2, a), imm);
-#define TYPE_C(opcode) return SET_IMM(SET_REG(SET_REG(opcode, 1, dest), 2, a), imm);
-#define TYPE_D(opcode) return SET_IMM(SET_REG(opcode, 1, dest), imm);
-#define TYPE_E(opcode) return SET_REG(opcode, 1, dest);
-#define TYPE_F(opcode) return SET_IMM_IMP(opcode, imm);
+static opcode_t func_I(u32 op, u32 li, u32 aa, u32 lk){
+	I_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
 
-#else
-
-#define TYPE_0(opcode) return opcode;
-
-#define TYPE_A(opcode) u32 ret = SET_REG(opcode, 1, dest);\
-ret = SET_REG(ret, 2, a);\
-ret = SET_REG(ret, 3, b);\
-return ret;
-
-#define TYPE_B(opcode) u32 ret = SET_REG(opcode, 1, dest);\
-ret = SET_REG(ret, 2, a);\
-ret = SET_ADD_IMM(ret, imm);\
-return ret;
-
-#define TYPE_C(opcode) u32 ret = SET_REG(opcode, 1, dest);\
-ret = SET_REG(ret, 2, a);\
-ret = SET_INDEX_OFFSET(ret, imm); \
-return ret;
-
-  
-#define TYPE_D(opcode) u32 ret = SET_REG(opcode, 1, dest);\
-ret = SET_IMM(ret, imm);\
-return ret;
-
-#define TYPE_E(opcode) return SET_REG(opcode, 1, dest);
-
-#define TYPE_F(opcode) return SET_IMM_IMP(opcode, imm);
-
-
-#endif
-
-
-
-static INLINE u32 func_A(u8 opcode, u8 dest, u8 a, u8 b){
-  TYPE_A(opcode);
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_B(u8 opcode, u8 dest, u8 a, u32 imm){
-  TYPE_B(opcode);
+static opcode_t func_B(u32 op, u32 bo, u32 bi, u32 bd, u32 aa, u32 lk){
+	B_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero	
+
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_C(u8 opcode, u8 dest, u32 imm, u8 a){
-  TYPE_C(opcode);
+static opcode_t func_SC(u32 op){
+	SC_FORM_t form;
+	*((u32*)&form) = 0; //Set all bytes to zero
+	form.opcode = op;
+	form.always_one = 1;
+
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_D(u8 opcode, u8 dest, u32 imm){
-  TYPE_D(opcode);
+
+//####################################################################################
+//					D FORM
+//####################################################################################
+
+
+static opcode_t func_D1(u32 op, u32 rt, u32 ra, u32 d){
+	D_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_E(u8 opcode, u8 dest){
-  TYPE_E(opcode);
+
+static opcode_t func_D2(u32 op, u32 bf, u32 l, u32 ra, u32 d){
+	D_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_F(u8 opcode, u32 imm){
-  TYPE_F(opcode);
+//####################################################################################
+//					D FORM
+//####################################################################################
+
+
+static opcode_t func_DS(u32 op, u32 rt, u32 ra, u32 ds, u32 xo){
+	DS_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
 }
 
-static INLINE u32 func_0(u8 opcode){
-  TYPE_0(opcode);
+
+
+//####################################################################################
+//					X FORM
+//####################################################################################
+
+
+
+static opcode_t func_X1(u32 op, u32 rt, u32 ra, u32 rb, u32 xo, u32 rc){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
 }
 
-#define func_mul func_A
-#define func_muli func_B
-#define func_div func_A
-#define func_divi func_B
-#define func_sub func_A
-#define func_subi func_B
-#define func_add func_A
-#define func_addi func_B
+static opcode_t func_X2(u32 op, u32 rt, u32 sr, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
 
-#define func_and func_A
-#define func_andi func_B
-#define func_or func_A
-#define func_ori func_B
-#define func_xor func_A
-#define func_xori func_B
-#define func_not func_F
+	return *((opcode_t*)&form);
+}
 
-#define func_li func_D
-#define func_load_byte func_C
-#define func_load_halfword func_C
-#define func_load_word func_C
-#define func_sb func_C
-#define func_shw func_C
-#define func_sw func_C
+static opcode_t func_X3(u32 op, u32 rs, u32 l, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+	
+	return *((opcode_t*)&form);
+}
 
-#define func_sl func_A
-#define func_sli func_B
-#define func_sr func_A
-#define func_sri func_B
+static opcode_t func_X4(u32 op, u32 bf, u32 l, u32 ra, u32 rb, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
 
-#define func_b func_F
-#define func_bl func_F
-#define func_beq func_F
-#define func_bne func_F
-#define func_blt func_F
-#define func_ble func_F
-#define func_bgt func_F
-#define func_bge func_F
-#define func_blr func_0
+	return *((opcode_t*)&form);
+}
 
-#define func_bdz func_F
-#define func_bdnz func_F
-#define func_bctrl func_0
+static opcode_t func_X5(u32 op, u32 bf, u32 fra, u32 frb, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
 
-#define func_cmp func_A
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_X6(u32 op, u32 bf, u32 u, u32 xo, u32 rc){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_X7(u32 op, u32 th, u32 ra, u32 rb, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_X8(u32 op, u32 l, u32 ra, u32 rb, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+	
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_X9(u32 op, u32 big_l, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_X10(u32 op, u32 to, u32 ra, u32 rb, u32 xo){
+	X_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	return *((opcode_t*)&form);
+}
+
+//####################################################################################
+//					XL FORM
+//####################################################################################
+
+
+static opcode_t func_XL1(u32 op, u32 bt, u32 ba, u32 bb, u32 xo){
+	XL_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XL2(u32 op, u32 bt, u32 ba, u32 bh, u32 xo, u32 lk){
+	XL_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XL3(u32 op, u32 bf, u32 bfa, u32 xo){
+	XL_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XL4(u32 op, u32 xo){
+	XL_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+//####################################################################################
+//					XFX FORM
+//####################################################################################
+
+
+static opcode_t func_XFX1(u32 op, u32 rt, u32 spr, u32 xo){
+	XFX_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XFX2(u32 op, u32 rt, u32 xo){
+	XFX_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XFX3(u32 op, u32 rt, u32 fxm, u32 xo){
+	XFX_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XFX4(u32 op, u32 rt, u32 fxm, u32 xo){
+	XFX_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+static opcode_t func_XFX5(u32 op, u32 rt, u32 fxm, u32 xo){
+	XFX_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+//####################################################################################
+//					XFL FORM
+//####################################################################################
+
+static opcode_t func_XFL(u32 op, u32 flm, u32 frb, u32 xo, u32 rc){
+	XFL_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+//####################################################################################
+//					XS FORM
+//####################################################################################
+
+static opcode_t func_XS(u32 op, u32 rs, u32 ra, u32 sh, u32 xo, u32 sh1, u32 rc){
+	XS_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+
+//####################################################################################
+//					XO FORM
+//####################################################################################
+
+static opcode_t func_XO(u32 op, u32 rt, u32 ra, u32 rb, u32 oe, u32 xo, u32 rc){
+	XO_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+//####################################################################################
+//					A FORM
+//####################################################################################
+
+static opcode_t func_A(u32 op, u32 frt, u32 fra, u32 frc, u32 xo, u32 rc){
+	A_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+
+
+//####################################################################################
+//					M FORM
+//####################################################################################
+
+static opcode_t func_M(u32 op, u32 rs, u32 ra, u32 rb, u32 mb, u32 me, u32 rc){
+	M_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+//####################################################################################
+//					MD FORM
+//####################################################################################
+
+static opcode_t func_MD(u32 op, u32 rs, u32 ra, u32 sh, u32 mb, u32 xo, u32 sh1, u32 rc){
+	M_FORM_t form;
+	*((opcode_t*)&form) = 0; //Set all bytes to zero
+
+	form.opcode = op;
+
+	return *((opcode_t*)&form);
+}
+
+
+
+
+
+//####################################################################################
+//					FP_DOUBLE FORM
+//####################################################################################
+
+
+//There is a mix of "X" and "A" forms so we need to figure it out
+static opcode_t func_FP_DOUBLE(u32 op, u32 a, u32 b, u32 c, u32 d, u32 e){
+	//Mode "A"
+	if(op >= 18 || op <= 31){
+		return func_A(op, a, b, c, d, e);
+	}
+
+	//Mode "X"
+	return func_X1(op, a, b, c, d, e);
+}
+
+
+
+//TODO: Delete me
+#define func_D func_D1
+
+
+#define func_illegal NULL
+#define func_tdi func_D
+#define func_twi func_D
+#define func_mulli func_D
+#define func_subfic func_D
+#define func_dozi func_D
+#define func_cmpli func_D
 #define func_cmpi func_D
+#define func_addic func_D
+#define func_addic_dot func_D
+#define func_addi func_D
+#define func_addis func_D
+#define func_bc_bca_bcl_bcla func_B
+#define func_sc func_SC
+#define func_b_ba_bl_bla func_I
+#define func_CR_OP func_XL1
+#define func_rlwimi func_M
+#define func_rlwinm func_M
+#define func_rlmi func_M
+#define func_rlwnm func_M
+#define func_ori func_D
+#define func_oris func_D
+#define func_xori func_D
+#define func_xoris func_D
+#define func_andi_dot func_D
+#define func_andis_dot func_D
+#define func_FX_DWD_ROT func_MD
+#define func_FX func_X1
+#define func_lwz func_D
+#define func_lwzu func_D
+#define func_lbz func_D
+#define func_lbzu func_D
+#define func_stw func_D
+#define func_stwu func_D
+#define func_stb func_D
+#define func_stbu func_D
+#define func_lhz func_D
+#define func_lhzu func_D
+#define func_lha func_D
+#define func_lhau func_D
+#define func_sth func_D
+#define func_sthu func_D
+#define func_lmw func_D
+#define func_stmw func_D
+#define func_lfs func_D
+#define func_lfsu func_D
+#define func_lfd func_D
+#define func_lfdu func_D
+#define func_stfs func_D
+#define func_stfsu func_D
+#define func_stfd func_D
+#define func_stfdu func_D
+#define func_FX_DS_FORM_LOADS func_DS
+#define func_FP_SINGLE func_A
+#define func_FX_DS_FORM_STORES func_DS
 
-#define func_mr func_A
-#define func_syscall func_F
-#define func_mtlr func_E
-#define func_mflr func_E
-#define func_mtctr func_E
-#define func_mfctr func_E
-#define func_end func_F
 
-#define func_nop func_0
-
-
-typedef u32 (*asm_microcode_t)(u32, u32, u32, u32, u32);
-
-asm_microcode_t asm_opcode_ptr[0b111111] = {func_nop};
-
-
-#define DEF_OP(opcode, func) asm_opcode_ptr[opcode] = func;
-static inline void init_ops(){
-  for(u8 i = 0; i < 0b111111; i++){
-    asm_opcode_ptr[i] = NULL;
-  }
-  DEF_OP(NOP, func_nop);
-  
-  DEF_OP(ADD, func_add);
-	DEF_OP(ADDI, func_addi);
-	
-	DEF_OP(LI, func_li);
-	DEF_OP(LW, func_load_word);
-	DEF_OP(LB, func_load_byte);
-	DEF_OP(LHW, func_load_halfword);
-	
-	DEF_OP(SW, func_sw);
-	DEF_OP(SB, func_sb);
-	DEF_OP(SHW, func_shw);
-	
-	DEF_OP(MUL, func_mul);
-	DEF_OP(MULI, func_muli);
-	
-	DEF_OP(DIV, func_div);
-	DEF_OP(DIVI, func_divi);
-	
-	DEF_OP(SUB, func_sub);
-	DEF_OP(SUBI, func_subi);
-	
-	DEF_OP(CMP, func_cmp);
-	DEF_OP(CMPI, func_cmpi);
-	
-	DEF_OP(B, func_b);
-	DEF_OP(BL, func_bl);
-	DEF_OP(BLR, func_blr);
-	DEF_OP(BEQ, func_beq);
-	DEF_OP(BNE, func_bne);
-	DEF_OP(BLT, func_blt);
-	DEF_OP(BLE, func_ble);
-	DEF_OP(BGT, func_bgt);
-	DEF_OP(BGE, func_bge);
-	
-	DEF_OP(BDZ, func_bdz);
-	DEF_OP(BDNZ, func_bdnz);
-	DEF_OP(BCTRL, func_bctrl);
-	
-	DEF_OP(SR, func_sr);
-	DEF_OP(SRI, func_sri);
-	DEF_OP(SL, func_sl);
-	DEF_OP(SLI, func_sli);
-	
-	DEF_OP(AND, func_and);
-	DEF_OP(ANDI, func_andi);
-	DEF_OP(OR, func_or);
-	DEF_OP(ORI, func_ori);
-	DEF_OP(XOR, func_xor);
-	DEF_OP(XORI, func_xori);
-	DEF_OP(NOT, func_not);
-	
-	DEF_OP(MR, func_mr);
-	DEF_OP(MFLR, func_mflr);
-	DEF_OP(MTLR, func_mtlr);
-	DEF_OP(MFCTR, func_mfctr);
-	DEF_OP(MTCTR, func_mtctr);
-	DEF_OP(SC, func_syscall);
-	DEF_OP(END, func_end);
-	
-	
-  extern char* opcode_str[OPCODE_LEN];
-	 for(u8 i = 0; i < OPCODE_LEN; i++){
-    if(asm_opcode_ptr[i] == NULL && opcode_str[i] != NULL){
-      fprintf(stderr, "WARNING ASM: opcode %u \"%s\" not implimented\n", i, opcode_str[i]);
-    }
-  }
-}
+//Extended ops need a bit of help to encode them.
 
 
 
-extern char* opcode_str[OPCODE_LEN];
 
-u8 name_to_instr(const char* __restrict__ memonic){
+
+
+typedef u32 (*asm_microcode_t)(u32, u32, u32, u32, u32, u32, u32, u32);
+
+const asm_microcode_t ASM_OPCODE_PTR[] = {
+	func_illegal,
+	func_illegal,
+	func_tdi,
+	func_twi,
+	func_illegal,
+	func_illegal,
+	func_illegal,
+	func_mulli,
+	func_subfic,
+	func_dozi,
+	func_cmpli,
+	func_cmpi,
+	func_addic,
+	func_addic_dot,
+	func_addi,
+	func_addis,
+	func_bc_bca_bcl_bcla,
+	func_sc,
+	func_b_ba_bl_bla,
+	func_CR_OP,
+	func_rlwimi,
+	func_rlwinm,
+	func_rlmi,
+	func_rlwnm,
+	func_ori,
+	func_oris,
+	func_xori,
+	func_xoris,
+	func_andi_dot,
+	func_andis_dot,
+	func_FX_DWD_ROT,
+	func_FX,
+	func_lwz,
+	func_lwzu,
+	func_lbz,
+	func_lbzu,
+	func_stw,
+	func_stwu,
+	func_stb,
+	func_stbu,
+	func_lhz,
+	func_lhzu,
+	func_lha,
+	func_lhau,
+	func_sth,
+	func_sthu,
+	func_lmw,
+	func_stmw,
+	func_lfs,
+	func_lfsu,
+	func_lfd,
+	func_lfdu,
+	func_stfs,
+	func_stfsu,
+	func_stfd,
+	func_stfdu,
+	func_illegal,
+	func_illegal,
+	func_FX_DS_FORM_LOADS,
+	func_FP_SINGLE,
+	func_illegal,
+	func_illegal,
+	func_FX_DS_FORM_STORES,
+	func_FP_DOUBLE
+};
+
+
+const char* ASM_OPCODE_NAMES[] = {
+	"ILLEGAL",
+	"ILLEGAL_01",
+	"TDI",
+	"TWI",
+	"ILLEGAL_04",
+	"ILLEGAL_05",
+	"ILLEGAL_06",
+	"MULLI",
+	"SUBFIC",
+	"DOZI",
+	"CMPLI",
+	"CMPI",
+	"ADDIC",
+	"ADDIC.",
+	"ADDI",
+	"ADDIS",
+	"BC",
+	"SC",
+	"B",
+	"CR_OP",
+	"RLWIMI",
+	"RLWINM",
+	"RLMI",
+	"RLWNM",
+	"ORI",
+	"ORIS",
+	"XORI",
+	"XORIS",
+	"ANDI.",
+	"ANDIS.",
+	"FX_DWD_ROT",
+	"FX",
+	"LWZ",
+	"LWZU",
+	"LBZ",
+	"LBZU",
+	"STW",
+	"STWU",
+	"STB",
+	"STBU",
+	"LHZ",
+	"LHZU",
+	"LHA",
+	"LHAU",
+	"STH",
+	"STHU",
+	"LMW",
+	"STMW",
+	"LFS",
+	"LFSU",
+	"LFD",
+	"LFDU",
+	"STFS",
+	"STFSU",
+	"STFD",
+	"STFDU",
+	"ILLEGAL_56",
+	"ILLEGAL_57",
+	"FX_DS_FORM_LOADS",
+	"FP_SINGLE",
+	"ILLEGAL_60",
+	"ILLEGAL_61",
+	"FX_DS_FORM_STORES",
+	"FP_DOUBLE",
+
+	//CR_OPS
+	"MCRF",
+	"BCLR",
+	"CRNOR",
+	"CRANDC",
+	"CRXOR",
+	"CRNAND",
+	"CRAND",
+	"CREQV",
+	"CRORC",
+	"CROR",
+	"BCCTR",
+
+	//FX_DWD_ROT_EXT
+	"RLDICL",
+	"RLDICR",
+	"RLDIC",
+	"RLDIMI",
+	"RLDCL",
+	"RLDCR",
+
+	//FX_EXT
+	"CMP",
+	"TW",
+	"SUBFC",
+	"MULHDU",
+	"ADDC",
+	"MULHWU",
+	"MFCR",
+	"LDX",
+	"LWZX",
+	"SLW",
+	"CNTLZW",
+	"SLD",
+	"AND",
+	"CMPL",
+	"SUBF",
+	"LDUX",
+	"LWZUX",
+	"CNTLZD",
+	"ANDC",
+	"TD",
+	"MULHD",
+	"MULHW",
+	"LBZX",
+	"NEG",
+	"LBZUX",
+	"NOR",
+	"SUBFE",
+	"ADDE",
+	"MTCRF",
+	"STDX",
+	"STWX",
+	"STDUX",
+	"STWUX",
+	"SUBFZE",
+	"ADDZE",
+	"STBX",
+	"SUBFME",
+	"MULLD",
+	"ADDME",
+	"MULLW",
+	"STBUX",
+	"ADD",
+	"LHZX",
+	"EQV",
+	"LHZUX",
+	"XOR",
+	"MFSPR",
+	"LWAX",
+	"LHAX",
+	"LWAUX",
+	"LHAUX",
+	"STHX",
+	"ORC",
+	"SRADI",
+	"STHUX",
+	"OR",
+	"DIVDU",
+	"DIVWU",
+	"MTSPR",
+	"NAND",
+	"DIVD",
+	"DIVW",
+	"MCRXR",
+	"LSWX",
+	"LWBRX",
+	"LFSX",
+	"SRW",
+	"SRD",
+	"LFSUX",
+	"LSWI",
+	"LFDX",
+	"LFDUX",
+	"STSWX",
+	"STWBRX",
+	"STFSX",
+	"STFSUX",
+	"STSWI",
+	"STFDX",
+	"STFDUX",
+	"LHBRX",
+	"SRAW",
+	"SRAD",
+	"SRAWI",
+	"STHBRX",
+	"EXTSH",
+	"EXTSB",
+	"STFIWX",
+	"EXTSW",
+};
+
+
+
+const size_t ASM_OPCODE_LEN = sizeof(ASM_OPCODE_PTR)/sizeof(asm_microcode_t);
+
+
+u32 name_to_instr(const char* __restrict__ memonic){
   char* name = cstrdup_stack(memonic);
   char* ogptr = name;
   //Normalize name
@@ -244,7 +687,7 @@ u8 name_to_instr(const char* __restrict__ memonic){
   
   //Search for opcode
   for(unsigned int i = 0; i < OPCODE_LEN; i++){
-    if(strcmp(name, opcode_str[i]) == 0){
+    if(strcmp(name, OPCODE_NAMES[i]) == 0){
       return i;
     }
   }
@@ -650,8 +1093,6 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     puts("ASSEMBLING ...");
   }
   
-  init_ops();
-  
   fu_TextFile t = fu_create_text_copy(assembly);
   clean_text(&t); //Remove all junk characters
   
@@ -696,19 +1137,18 @@ fu_BinFile assemble_s(fu_TextFile assembly){
     else
       tmp = "0";
     
-    u32 dest, a, b, c;
+    u32 dest, a, b, c, d, e, f;
     
     //If the assembly does not need all of the arguments then sscanf will not set a,b,c so it is safe to use. 
     //All varibles are set to 0 which removes and possiblity that it will overrite any bits if set is used
-    sscanf(tmp, "%u %u %u %u", &dest, &a, &b, &c); 
+    sscanf(tmp, "%u %u %u %u %u %u %u", &dest, &a, &b, &c, &d, &e, &f);
     if(logging){
-      printf("pc: %llX:  %s %s\n", i * 4 + start_addr, opcode_str[opcode], tmp);
-      //printf("pc: %llX:  %s %X, %X, %X\n", i * 4 + start_addr, opcode_str[opcode], a, b, c);
+      printf("pc: %llX:  %s %s\n", i * 4 + start_addr, OPCODE_NAMES[opcode], tmp);
     }
     //When calling the function pointer, the function being called has no clue how many arguments are being passed in.
     //All argument registers are overwritten in this function and the called function has no way of telling if there is arguments set past it's
     //intended reach so this approach has no expliots avaible and condenses the code a lot.
-    PUSH32(asm_opcode_ptr[opcode](opcode, dest, a, b, c));
+    PUSH32(ASM_OPCODE_PTR[opcode](opcode, dest, a, b, c, d, e ,f));
   }
   
   vector_deconstruct(&tmp_asm.labels);

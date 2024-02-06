@@ -36,3 +36,6 @@
 *.idx
 *.bin
 compile_commands.json
+
+#Dumb other files
+*.bak

@@ -30,6 +30,8 @@ typedef union{
   char byte;
 }CR_t;
 
+typedef unsigned long unsigned_gpr_t;
+typedef long signed_gpr_t;
 
 typedef struct{
   ptr_t pc;
@@ -41,10 +43,11 @@ typedef struct{
   
 
   union {
-    long r[32];
-    unsigned long ru[32];
+    signed_gpr_t r[32];
+    unsigned_gpr_t ru[32];
 
     struct{
+      unsigned_gpr_t r0; //this is so r1 can be the stack pointer	
       ptr_t sp;
     };
   };

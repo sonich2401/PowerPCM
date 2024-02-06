@@ -28,8 +28,9 @@ typedef enum{
 
 
 
-
+#pragma pack(push, 1)
 #define FORCE_PACK __attribute__ ((packed))
+#define FORCE_PACK1 __attribute__ ((__packed__))
 
 typedef struct FORCE_PACK{
 	union{
@@ -44,7 +45,7 @@ typedef struct FORCE_PACK{
 typedef struct FORCE_PACK{
     u8 LK : 1;
     u8 AA : 1;
-	u32 LI : 24;
+	s32 LI : 24;
     u8 opcode : 6;
 }I_FORM_t;
 
@@ -66,138 +67,126 @@ typedef struct FORCE_PACK{
     u8 opcode : 6;
 }SC_FORM_t;
 
+typedef struct{
+	u8 L : 1;
+	u8 BF_padding : 1;
+	u8 BF : 3;
+}D_FORM_BF_t;
+
+
+typedef union {
+	u8 RT : 5;
+	u8 RS : 5;
+	u8 TO : 5;
+	u8 FRT : 5;
+	u8 FRS : 5;
+	struct FORCE_PACK{
+		u8 L : 1;
+		u8 BF_padding : 1;
+		u8 BF : 3;
+	}FORCE_PACK1;
+}FORM_D_DEST_REG_t;
+
 typedef struct FORCE_PACK{
     union FORCE_PACK{
-        u32 D : 16;
-        s32 SI : 16;
-        u32 UI : 16;
+        u16 D : 16;
+        s16 SI : 16;
+        u16 UI : 16;
     };    
 
 	u8 RA : 5;
 	
-    union FORCE_PACK{
-	    u8 RT : 5;
-	    u8 RS : 5;
-	    u8 TO : 5;
-	    u8 FRT : 5;
-	    u8 FRS : 5;
-	    struct FORCE_PACK{
-			u8 L : 1;
-	        u8 BF_padding : 1;
-	        u8 BF : 3;
-	    };
-	};
+    u8 RT : 5;
 
-    u8 opcode : 6;
-}D_FORM_t;
+    u32 opcode : 6;
+}FORCE_PACK D_FORM_t;
 
 typedef struct FORCE_PACK{
 	u8 XO : 2;
     u32 DS : 14;
 	u8 RA : 5;
-    union FORCE_PACK{
-        u8 RT : 5;
-        u8 RS : 5;
-    };
+	u8 RT : 5;
 	u8 opcode : 6;
 }DS_FORM_t;
 
+
+typedef union FORCE_PACK{
+	u8 RA : 5;
+	u8 FRA : 5;
+	u8 SR : 4;
+	struct FORCE_PACK{
+	    u8 RA_padding : 2;
+	    u8 BFA : 3;
+	};	
+}X_FORM_RA_t;
+
+typedef union FORCE_PACK{
+    u8 RT : 5;
+    u8 RS : 5;
+    u8 TO : 5;
+    u8 FRT : 5;
+    u8 FRS : 5;
+    u8 TH : 2;
+    struct FORCE_PACK{
+        union{
+            struct{
+                u8 L : 1;
+                u8 BF_padding : 1;
+            };
+            u8 BIG_L : 2;
+        };
+        u8 BF : 3;
+    };
+}X_FORM_RT_t;
 
 typedef struct FORCE_PACK{
 	u8 Rc : 1;
     
     u32 XO : 10;
 
-    union FORCE_PACK{
-	    u8 RB : 5;
-	    u8 NB : 5;
-	    u8 SH : 5;
-	    u8 FRB : 5;
-	    u8 U : 4;
-	};
+	u8 RB : 5;
 
-	union FORCE_PACK{
-        u8 RA : 5;
-        u8 FRA : 5;
-        u8 SR : 4;
-        struct FORCE_PACK{
-            u8 RA_padding : 2;
-            u8 BFA : 3;
-        };
-    };
+	u8 RA : 5;
 
-	union FORCE_PACK{
-        u8 RT : 5;
-        u8 RS : 5;
-        u8 TO : 5;
-        u8 FRT : 5;
-        u8 FRS : 5;
-        u8 TH : 2;
-        struct FORCE_PACK{
-            union{
-                struct{
-                    u8 L : 1;
-                    u8 BF_padding : 1;
-                };
-                u8 BIG_L : 2;
-            };
-            u8 BF : 3;
-        };
-    };
+	u8 RT : 5;
 
     u8 opcode : 6;
 }X_FORM_t;
 
+
+typedef struct FORCE_PACK{
+	u8 BF_padding : 2;
+	u8 BF : 3;	
+}XL_FORM_BF_t;
+
 typedef struct FORCE_PACK{
 	u8 LK : 1;
     u32 XO : 10;
-    
-    union FORCE_PACK{
-        u8 BB : 5;
-        u8 BH : 2;
-    };
 
-	union FORCE_PACK{
-        u8 BA : 5;
-        u8 BI : 5;
-        struct FORCE_PACK{
-        	u8 BFA_padding : 2;
-        	u8 BFA : 3;
-        };
-    };
+    u8 BB : 5;
 
-	union FORCE_PACK{
-        u8 BT : 5;
-        u8 BO : 5;
-        struct{
-			u8 BF_padding : 2;
-        	u8 BF : 3;
-        };
-    };
+	u8 BA : 5;
+
+	u8 BT : 5;
 
     u8 opcode : 6;
 }XL_FORM_t;
 
 
 typedef struct FORCE_PACK{
+	u8 FXM_padding : 1;
+	u8 FXM : 8;
+	u8 always_1_or_0 : 1;
+}XFX_FORM_FXM_t;
+
+typedef struct FORCE_PACK{
 	u8 padding : 1;
 
 	u32 XO : 10;
 
-	union FORCE_PACK{
-        u16 spr : 10;
-        u16 tbr : 10;
-        struct FORCE_PACK{
-        	u8 FXM_padding : 1;
-            u8 FXM : 8;
-            u8 always_1_or_0 : 1;
-        };
-    };
-    
-	union FORCE_PACK{
-        u8 RT : 5;
-        u8 RS : 5;
-    };
+	u16 spr : 10;
+	
+   	u8 RT : 5;
     
     u8 opcode : 6;
 }XFX_FORM_t;
@@ -248,10 +237,7 @@ typedef struct FORCE_PACK{
     u8 Rc : 1;
 	u8 ME : 4;
 	u8 MB : 5;
-	union FORCE_PACK{
-        u8 RB : 5;
-        u8 SH : 5;
-    };
+	u8 RB : 5;
 	u8 RA : 5;
 	u8 RS : 5;
 	u8 opcode : 6;
@@ -262,10 +248,7 @@ typedef struct FORCE_PACK{
 
 	u8 sh1 : 1;
 	u8 XO : 4;
-	union FORCE_PACK {
-        u8 mb : 5;
-        u8 me : 5;
-    };
+	u8 mb : 5;
     u8 sh : 5;
 	u8 RA : 5;
 	u8 RS : 5;
@@ -277,10 +260,7 @@ typedef struct FORCE_PACK{
     u8 Rc : 1;
 
 	u8 XO : 5;
-	union FORCE_PACK {
-        u8 mb : 5;
-        u8 me : 5;
-    };
+	u8 mb : 5;
 	u8 sh : 5;
 	u8 RA : 5;
 	u8 RS : 5;
@@ -288,4 +268,5 @@ typedef struct FORCE_PACK{
     u8 opcode : 6;
 }MDS_FORM_t;
 
+#pragma pack(pop)
 #pragma GCC diagnostic pop
